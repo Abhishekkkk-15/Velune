@@ -211,7 +211,7 @@ fun SettingsScreen(
     val listState = rememberLazyListState()
 
     // Account state
-    val viewModel: HomeViewModel = hiltViewModel()
+    val viewModel: HomeViewModel = hiltViewModel(context as androidx.activity.ComponentActivity)
     val accountName by viewModel.accountName.collectAsState()
     val accountImageUrl by viewModel.accountImageUrl.collectAsState()
     val (innerTubeCookie, onInnerTubeCookieChange) = rememberPreference(InnerTubeCookieKey, "")
@@ -794,7 +794,7 @@ fun SettingsScreen(
                     ) {
                         SettingsAccountCard(
                             isLoggedIn = isLoggedIn,
-                            accountName = accountName,
+                            accountName = accountName ?:"Guest",
                             accountImageUrl = accountImageUrl,
                             onAccountClick = {
                                 if (isLoggedIn) navController.navigate("settings/account")

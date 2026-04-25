@@ -21,14 +21,21 @@
 
 🚫 No Ads • 💰 No Subscription • ⚡ Full Control  
 
-<br/>
+<div align="center">
 
-![Android](https://img.shields.io/badge/Platform-Android-3DDC84?style=for-the-badge&logo=android&logoColor=white&labelColor=0d0f0a)
-![Kotlin](https://img.shields.io/badge/Language-Kotlin-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white&labelColor=0d0f0a)
-![Compose](https://img.shields.io/badge/UI-Jetpack_Compose-4285F4?style=for-the-badge&logo=jetpack-compose&logoColor=white&labelColor=0d0f0a)
-![License](https://img.shields.io/badge/License-GPL_3.0-c8e63c?style=for-the-badge&labelColor=0d0f0a)
+![Release](https://img.shields.io/github/v/release/nikhilvishwakarma00/Velune?style=for-the-badge&logo=github&logoColor=white&labelColor=18181B&color=3B82F6)
+![Downloads](https://img.shields.io/github/downloads/nikhilvishwakarma00/Velune/total?style=for-the-badge&logo=github&logoColor=white&labelColor=18181B&color=10B981)
+![Stars](https://img.shields.io/github/stars/nikhilvishwakarma00/Velune?style=for-the-badge&logo=github&logoColor=white&labelColor=18181B&color=F59E0B)
+![License](https://img.shields.io/github/license/nikhilvishwakarma00/Velune?style=for-the-badge&labelColor=18181B&color=EF4444)
 
-<br/>
+<br>
+
+![Kotlin](https://img.shields.io/badge/Kotlin-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)
+![Jetpack Compose](https://img.shields.io/badge/Compose-4285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white)
+![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
+![Architecture](https://img.shields.io/badge/Architecture-MVVM-52525B?style=for-the-badge)
+
+</div>
 
 ### 👉 [Download Latest APK](https://github.com/nikhilvishwakarma00/Velune/releases/latest)
 
@@ -69,13 +76,12 @@ Experience lyrics like never before:
 
 <img src="screenshots/Home.png" width="140"/>
 <img src="screenshots/Now Playing.png" width="140"/>
-<img src="screenshots/Lyrics.png" width="140"/>
-<img src="screenshots/Downloaded.png" width="140"/>
+<img src="screenshots/History.png" width="140"/>
+<img src="screenshots/Stats.png" width="140"/>
 
 <br/>
 
 <img src="screenshots/Library.png" width="140"/>
-<img src="screenshots/Account.png" width="140"/>
 <img src="screenshots/Settings.png" width="140"/>
 <img src="screenshots/About.png" width="140"/>
 
@@ -153,21 +159,34 @@ Android Studio Ladybug+\
 JDK 17
 Android SDK 34+ \
 Run Locally\
-Bash\
+Bash
 ```
 git clone https://github.com/nikhilvishwakarma00/Velune.git\
 cd Velune\
 
 ```
 Open in Android Studio → Sync → Run ▶ \
-📦 Download\
+📦 Download
  
 
 🚀 Get Latest Release⁠ 
- 
+
+-------------------------------------------------------------------------
+
+## 💬 Community
+
+Have a feature request, found a bug,
+or just want to share your favorite music setups? Join the official Velune community!
+
+* *Discord:* [Join the Velune Server](https://discord.gg/cJNHTdoP6H)
+* *GitHub Discussions:* [Open a Discussion](https://github.com/nikhilvishwakarma00/Velune/discussions)
+
+
+
+--------------------------------------------------------------------------------------------------------------
 
 🙌 Credits\
-Huge respect to these projects:\
+Huge respect to these projects:
 
 Archivetune -base framework
 
@@ -184,10 +203,10 @@ BetterLyrics
 ⚖️ Legal
 Velune is an independent client and is not affiliated with YouTube or Google.\
 Please support artists through official platforms ❤️\
-Licensed under GPL-3.0\
+Licensed under GPL-3.0
  
 
 💙 Built with passion by Nikhil\
 ⭐ Star the repo if Velune impressed you\
-🚀 Help it reach more people\
+🚀 Help it reach more people
  

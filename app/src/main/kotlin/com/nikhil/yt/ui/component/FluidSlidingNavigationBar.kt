@@ -46,7 +46,7 @@ fun FluidSlidingNavigationBar(
     ) {
         val tabWidth = maxWidth / items.size
 
-        val pillWidth = 64.dp
+        val pillWidth = 48.dp
         val pillHeight = 32.dp
 
         val indicatorOffset by animateDpAsState(

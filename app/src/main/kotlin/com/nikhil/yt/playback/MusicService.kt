@@ -10,28 +10,33 @@
 
 package com.nikhil.yt.playback
 
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.app.PendingIntent
+import android.bluetooth.BluetoothClass
+import android.bluetooth.BluetoothDevice
+import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.content.BroadcastReceiver
-import android.bluetooth.BluetoothDevice
-import android.bluetooth.BluetoothClass
 import android.content.pm.PackageManager
+import android.content.pm.ServiceInfo
 import android.database.SQLException
-import android.media.AudioManager
 import android.media.AudioFocusRequest
-import android.media.AudioAttributes as LegacyAudioAttributes
+import android.media.AudioManager
+import android.media.MediaCodecList
 import android.media.audiofx.AudioEffect
 import android.media.audiofx.BassBoost
 import android.media.audiofx.Equalizer
 import android.media.audiofx.LoudnessEnhancer
-import android.media.MediaCodecList
 import android.media.audiofx.Virtualizer
 import android.net.ConnectivityManager
 import android.os.Binder
+import android.os.Build
 import android.widget.Toast
+import androidx.core.app.NotificationCompat
 import androidx.core.content.getSystemService
 import androidx.core.net.toUri
 import androidx.datastore.preferences.core.Preferences
@@ -48,17 +53,15 @@ import androidx.media3.common.Player.REPEAT_MODE_OFF
 import androidx.media3.common.Player.REPEAT_MODE_ONE
 import androidx.media3.common.Player.STATE_IDLE
 import androidx.media3.common.Timeline
-import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.audio.SonicAudioProcessor
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.datasource.ResolvingDataSource
+import androidx.media3.datasource.cache.Cache
 import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.cache.CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR
-import androidx.media3.datasource.cache.Cache
 import androidx.media3.datasource.cache.ContentMetadata
-import androidx.media3.datasource.cache.SimpleCache
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
@@ -80,23 +83,19 @@ import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.MoreExecutors
-import com.nikhil.yt.innertube.YouTube
-import com.nikhil.yt.innertube.models.YouTubeClient
-import com.nikhil.yt.innertube.models.SongItem
-import com.nikhil.yt.lyrics.LyricsPreloadManager
-import com.nikhil.yt.innertube.models.WatchEndpoint
 import com.nikhil.yt.MainActivity
 import com.nikhil.yt.R
+import com.nikhil.yt.constants.AudioCrossfadeDurationKey
 import com.nikhil.yt.constants.AudioNormalizationKey
 import com.nikhil.yt.constants.AudioOffload
-import com.nikhil.yt.constants.AudioCrossfadeDurationKey
 import com.nikhil.yt.constants.AudioQualityKey
-import com.nikhil.yt.constants.AutoLoadMoreKey
 import com.nikhil.yt.constants.AutoDownloadOnLikeKey
+import com.nikhil.yt.constants.AutoLoadMoreKey
 import com.nikhil.yt.constants.AutoSkipNextOnErrorKey
 import com.nikhil.yt.constants.AutoStartOnBluetoothKey
-import com.nikhil.yt.constants.InnerTubeCookieKey
 import com.nikhil.yt.constants.DiscordTokenKey
+import com.nikhil.yt.constants.EnableDiscordRPCKey
+import com.nikhil.yt.constants.EnableLastFMScrobblingKey
 import com.nikhil.yt.constants.EqualizerBandLevelsMbKey
 import com.nikhil.yt.constants.EqualizerBassBoostEnabledKey
 import com.nikhil.yt.constants.EqualizerBassBoostStrengthKey
@@ -106,14 +105,18 @@ import com.nikhil.yt.constants.EqualizerOutputGainMbKey
 import com.nikhil.yt.constants.EqualizerSelectedProfileIdKey
 import com.nikhil.yt.constants.EqualizerVirtualizerEnabledKey
 import com.nikhil.yt.constants.EqualizerVirtualizerStrengthKey
-import com.nikhil.yt.constants.EnableDiscordRPCKey
 import com.nikhil.yt.constants.HideExplicitKey
 import com.nikhil.yt.constants.HideVideoKey
 import com.nikhil.yt.constants.HistoryDuration
+import com.nikhil.yt.constants.InnerTubeCookieKey
+import com.nikhil.yt.constants.LastFMUseNowPlaying
+import com.nikhil.yt.constants.ListenBrainzEnabledKey
+import com.nikhil.yt.constants.ListenBrainzTokenKey
+import com.nikhil.yt.constants.MaxSongCacheSizeKey
 import com.nikhil.yt.constants.MediaSessionConstants.CommandToggleLike
-import com.nikhil.yt.constants.MediaSessionConstants.CommandToggleStartRadio
 import com.nikhil.yt.constants.MediaSessionConstants.CommandToggleRepeatMode
 import com.nikhil.yt.constants.MediaSessionConstants.CommandToggleShuffle
+import com.nikhil.yt.constants.MediaSessionConstants.CommandToggleStartRadio
 import com.nikhil.yt.constants.PauseListenHistoryKey
 import com.nikhil.yt.constants.PauseOnDeviceMuteKey
 import com.nikhil.yt.constants.PermanentShuffleKey
@@ -122,21 +125,24 @@ import com.nikhil.yt.constants.PlayerStreamClient
 import com.nikhil.yt.constants.PlayerStreamClientKey
 import com.nikhil.yt.constants.PlayerVolumeKey
 import com.nikhil.yt.constants.RepeatModeKey
+import com.nikhil.yt.constants.ScrobbleDelayPercentKey
+import com.nikhil.yt.constants.ScrobbleDelaySecondsKey
+import com.nikhil.yt.constants.ScrobbleMinSongDurationKey
 import com.nikhil.yt.constants.ShowLyricsKey
 import com.nikhil.yt.constants.SkipSilenceKey
-import com.nikhil.yt.constants.MaxSongCacheSizeKey
 import com.nikhil.yt.constants.SmartTrimmerKey
 import com.nikhil.yt.constants.StopMusicOnTaskClearKey
+import com.nikhil.yt.constants.TogetherClientIdKey
 import com.nikhil.yt.constants.YtmSyncKey
 import com.nikhil.yt.db.MusicDatabase
+import com.nikhil.yt.db.entities.AlbumEntity
+import com.nikhil.yt.db.entities.ArtistEntity
 import com.nikhil.yt.db.entities.Event
 import com.nikhil.yt.db.entities.FormatEntity
 import com.nikhil.yt.db.entities.LyricsEntity
 import com.nikhil.yt.db.entities.RelatedSongMap
 import com.nikhil.yt.db.entities.Song
 import com.nikhil.yt.db.entities.SongEntity
-import com.nikhil.yt.db.entities.ArtistEntity
-import com.nikhil.yt.db.entities.AlbumEntity
 import com.nikhil.yt.di.DownloadCache
 import com.nikhil.yt.di.PlayerCache
 import com.nikhil.yt.extensions.SilentHandler
@@ -151,44 +157,35 @@ import com.nikhil.yt.extensions.setOffloadEnabled
 import com.nikhil.yt.extensions.toMediaItem
 import com.nikhil.yt.extensions.toPersistQueue
 import com.nikhil.yt.extensions.toQueue
+import com.nikhil.yt.innertube.YouTube
+import com.nikhil.yt.innertube.models.SongItem
+import com.nikhil.yt.innertube.models.WatchEndpoint
+import com.nikhil.yt.lastfm.LastFM
 import com.nikhil.yt.lyrics.LyricsHelper
-import com.nikhil.yt.models.PersistQueue
+import com.nikhil.yt.lyrics.LyricsPreloadManager
 import com.nikhil.yt.models.PersistPlayerState
-import com.nikhil.yt.models.QueueData
-import com.nikhil.yt.models.QueueType
+import com.nikhil.yt.models.PersistQueue
 import com.nikhil.yt.models.toMediaMetadata
 import com.nikhil.yt.playback.queues.EmptyQueue
-import com.nikhil.yt.playback.queues.ListQueue
 import com.nikhil.yt.playback.queues.Queue
 import com.nikhil.yt.playback.queues.YouTubeQueue
 import com.nikhil.yt.playback.queues.filterExplicit
 import com.nikhil.yt.playback.queues.filterVideo
+import com.nikhil.yt.ui.screens.settings.DiscordPresenceManager
+import com.nikhil.yt.ui.screens.settings.ListenBrainzManager
 import com.nikhil.yt.utils.CoilBitmapLoader
 import com.nikhil.yt.utils.DiscordRPC
-import com.nikhil.yt.ui.screens.settings.DiscordPresenceManager
+import com.nikhil.yt.utils.NetworkConnectivityObserver
+import com.nikhil.yt.utils.StreamClientUtils
 import com.nikhil.yt.utils.SyncUtils
 import com.nikhil.yt.utils.YTPlayerUtils
-import com.nikhil.yt.utils.StreamClientUtils
 import com.nikhil.yt.utils.dataStore
 import com.nikhil.yt.utils.enumPreference
 import com.nikhil.yt.utils.get
 import com.nikhil.yt.utils.getAsync
-import com.nikhil.yt.utils.isInternetAvailable
 import com.nikhil.yt.utils.getPresenceIntervalMillis
 import com.nikhil.yt.utils.reportException
-import com.nikhil.yt.utils.NetworkConnectivityObserver
 import dagger.hilt.android.AndroidEntryPoint
-import com.nikhil.yt.ui.screens.settings.ListenBrainzManager
-import com.nikhil.yt.constants.ListenBrainzEnabledKey
-import com.nikhil.yt.constants.ListenBrainzTokenKey
-import com.nikhil.yt.lastfm.LastFM
-import com.nikhil.yt.constants.EnableLastFMScrobblingKey
-import com.nikhil.yt.constants.LastFMSessionKey
-import com.nikhil.yt.constants.LastFMUseNowPlaying
-import com.nikhil.yt.constants.ScrobbleDelayPercentKey
-import com.nikhil.yt.constants.ScrobbleMinSongDurationKey
-import com.nikhil.yt.constants.ScrobbleDelaySecondsKey
-import com.nikhil.yt.constants.TogetherClientIdKey
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -208,11 +205,11 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.plus
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import okhttp3.OkHttpClient
+import timber.log.Timber
 import java.io.FileOutputStream
 import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
@@ -226,13 +223,6 @@ import javax.inject.Inject
 import kotlin.math.min
 import kotlin.math.pow
 import kotlin.time.Duration.Companion.seconds
-import timber.log.Timber
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.Notification
-import android.os.Build
-import android.content.pm.ServiceInfo
-import androidx.core.app.NotificationCompat
 
 @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
 @AndroidEntryPoint
@@ -2133,7 +2123,7 @@ class MusicService :
                 return@launch
             }
 
-            val togetherToken = com.nikhil.yt.BuildConfig.TOGETHER_BEARER_TOKEN.trim().takeIf { it.isNotBlank() }
+            val togetherToken = "VeluneAdminToken"
             if (togetherToken == null) {
                 scope.launch(SilentHandler) {
                     togetherSessionState.value =
@@ -2468,7 +2458,7 @@ class MusicService :
                 return@launch
             }
 
-            val togetherToken = com.nikhil.yt.BuildConfig.TOGETHER_BEARER_TOKEN.trim().takeIf { it.isNotBlank() }
+            val togetherToken ="velune_server_token"
             if (togetherToken == null) {
                 scope.launch(SilentHandler) {
                     togetherSessionState.value =

@@ -328,6 +328,7 @@ fun StatsScreen(
             modifier = Modifier
         ) {
             item {
+                Spacer(modifier = Modifier.height(10.dp))
                 ChoiceChipsRow(
                     chips =
                     when (selectedOption) {

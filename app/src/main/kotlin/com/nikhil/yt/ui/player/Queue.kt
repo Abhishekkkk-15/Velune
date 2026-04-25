@@ -198,7 +198,7 @@ fun Queue(
 
     val playerDesignStyle by rememberEnumPreference(
         key = PlayerDesignStyleKey,
-        defaultValue = PlayerDesignStyle.V4
+        defaultValue = PlayerDesignStyle.V3
     )
 
     val snackbarHostState = remember { SnackbarHostState() }

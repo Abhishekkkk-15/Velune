@@ -5,6 +5,7 @@
 
 package com.nikhil.yt.ui.screens.settings
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -56,13 +57,13 @@ import com.nikhil.yt.utils.dataStore
 fun VeluneAccountSettingsScreen(
     navController: NavController,
 ) {
-    val viewModel: HomeViewModel = hiltViewModel()
+    val context = LocalContext.current
+    val viewModel: HomeViewModel = hiltViewModel(context as androidx.activity.ComponentActivity)
     val accountName by viewModel.accountName.collectAsState()
-    val isLoggedIn = accountName != "Guest" && accountName.isNotEmpty()
+    val isLoggedIn = accountName?.let { it != "Guest" && it.isNotEmpty() }
     var showLogoutDialog by remember { mutableStateOf(false) }
     var showTokenEditor by remember { mutableStateOf(false) }
     var showPlaylistDialog by remember { mutableStateOf(false) }
-    val context = LocalContext.current
 
     val (innerTubeCookie, onInnerTubeCookieChange) = rememberPreference(InnerTubeCookieKey, "")
     val (poToken, onPoTokenChange) = rememberPreference(PoTokenKey, "")
@@ -103,21 +104,36 @@ fun VeluneAccountSettingsScreen(
             item {
                 AccountSectionHeader("Settings")
             }
+
+
             item {
-                if (isLoggedIn) {
-                    AccountSettingsItem(
-                        icon = painterResource(R.drawable.logout),
-                        title = "Logout",
-                        onClick = { showLogoutDialog = true }
-                    )
-                } else {
-                    AccountSettingsItem(
-                        icon = painterResource(R.drawable.login),
-                        title = "Login",
-                        onClick = { navController.navigate("login") }
-                    )
+                AnimatedContent(
+                    targetState = isLoggedIn,
+                    label = "LoginLogoutAnimation"
+                ) { targetIsLoggedIn ->
+                    when (targetIsLoggedIn) {
+                        null -> {
+                            Box(modifier = Modifier.fillMaxWidth().height(64.dp))
+                        }
+                        true -> {
+                            AccountSettingsItem(
+                                icon = painterResource(R.drawable.logout),
+                                title = "Logout",
+                                onClick = { showLogoutDialog = true }
+                            )
+                        }
+                        false -> {
+                            AccountSettingsItem(
+                                icon = painterResource(R.drawable.login),
+                                title = "Login",
+                                onClick = { navController.navigate("login") }
+                            )
+                        }
+                    }
                 }
             }
+
+
 
             // Login with token Section
             item {

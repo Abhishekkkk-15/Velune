@@ -38,12 +38,12 @@ import com.nikhil.yt.constants.InnerTubeCookieKey
 fun VeluneSettingsScreen(
     navController: NavController,
 ) {
-    val viewModel: HomeViewModel = hiltViewModel()
+    val context = LocalContext.current
+    val viewModel: HomeViewModel = hiltViewModel(context as androidx.activity.ComponentActivity)
     val accountName by viewModel.accountName.collectAsState()
     val accountImageUrl by viewModel.accountImageUrl.collectAsState()
-    val isLoggedIn = accountName != "Guest" && accountName.isNotEmpty()
+    val isLoggedIn = accountName != "Guest" && !accountName.isNullOrEmpty()
     var showLogoutDialog by remember { mutableStateOf(false) }
-    val context = LocalContext.current
     val (innerTubeCookie, onInnerTubeCookieChange) = rememberPreference(InnerTubeCookieKey, "")
 
     Scaffold(
@@ -124,7 +124,7 @@ fun VeluneSettingsScreen(
                 if (isLoggedIn) {
                     SettingsItemAccountStyle(
                         model = accountImageUrl,
-                        fallbackText = accountName.firstOrNull()?.uppercase() ?: "?",
+                        fallbackText = accountName?.firstOrNull()?.uppercase()?:"",
                         title = "Account",
                         onClick = { navController.navigate("settings/account") }
                     )

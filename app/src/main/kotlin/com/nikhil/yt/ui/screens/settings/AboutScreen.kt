@@ -6,6 +6,7 @@
 
 package com.nikhil.yt.ui.screens.settings
 
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -22,6 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.UriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -175,7 +177,16 @@ fun AboutScreen(
                     onClick = { uriHandler.openUri("https://github.com/nikhilvishwakarma00/Velune") }
                 )
                 Spacer(Modifier.height(24.dp))
+
+                AboutItemCard(
+                    iconRes = R.drawable.ic_discord,
+                    title = "Discord Server",
+                    subtitle = "Join the community to chat and report bugs",
+                    onClick = { uriHandler.openUri("https://discord.gg/cJNHTdoP6H")}
+                )
+                Spacer(Modifier.height(24.dp))
             }
+
 
             // --- APP INFO SECTION ---
             item {

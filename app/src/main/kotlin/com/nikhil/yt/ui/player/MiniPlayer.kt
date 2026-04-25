@@ -183,16 +183,16 @@ private fun LegacyMiniPlayer(
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
     val canSkipNext by playerConnection.canSkipNext.collectAsState()
     val canSkipPrevious by playerConnection.canSkipPrevious.collectAsState()
-    
+
     // Track loading state when buffering
     val isLoading = playbackState == STATE_BUFFERING
-    
+
     val currentView = LocalView.current
     val layoutDirection = LocalLayoutDirection.current
     val coroutineScope = rememberCoroutineScope()
     val swipeSensitivity by rememberPreference(SwipeSensitivityKey, 0.73f)
     val swipeThumbnail by rememberPreference(com.nikhil.yt.constants.SwipeThumbnailKey, true)
-    
+
     val offsetXAnimatable = remember { Animatable(0f) }
     var dragStartTime by remember { mutableStateOf(0L) }
     var totalDragDistance by remember { mutableFloatStateOf(0f) }
@@ -213,9 +213,9 @@ private fun LegacyMiniPlayer(
             .height(MiniPlayerHeight)
             .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal))
             .background(
-                if (pureBlack) 
-                    Color.Black 
-                else 
+                if (pureBlack)
+                    Color.Black
+                else
                     MaterialTheme.colorScheme.surfaceContainer // Fixed background independent of player background
             )
             .let { baseModifier ->
@@ -252,18 +252,18 @@ private fun LegacyMiniPlayer(
                                 val dragDuration = System.currentTimeMillis() - dragStartTime
                                 val velocity = if (dragDuration > 0) totalDragDistance / dragDuration else 0f
                                 val currentOffset = offsetXAnimatable.value
-                                
+
                                 val minDistanceThreshold = 50f
                                 val velocityThreshold = (swipeSensitivity * -8.25f) + 8.5f
 
                                 val shouldChangeSong = (
-                                    kotlin.math.abs(currentOffset) > minDistanceThreshold &&
-                                    velocity > velocityThreshold
-                                ) || (kotlin.math.abs(currentOffset) > autoSwipeThreshold)
-                                
+                                        kotlin.math.abs(currentOffset) > minDistanceThreshold &&
+                                                velocity > velocityThreshold
+                                        ) || (kotlin.math.abs(currentOffset) > autoSwipeThreshold)
+
                                 if (shouldChangeSong) {
                                     val isRightSwipe = currentOffset > 0
-                                    
+
                                     if (isRightSwipe && canSkipPrevious) {
                                         playerConnection.player.seekToPreviousMediaItem()
                                         if (com.nikhil.yt.ui.screens.settings.DiscordPresenceManager.isRunning()) {
@@ -276,7 +276,7 @@ private fun LegacyMiniPlayer(
                                         }
                                     }
                                 }
-                                
+
                                 coroutineScope.launch {
                                     offsetXAnimatable.animateTo(
                                         targetValue = 0f,
@@ -298,7 +298,7 @@ private fun LegacyMiniPlayer(
                 .height(2.dp)
                 .align(Alignment.BottomCenter),
         )
-        
+
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
@@ -359,7 +359,7 @@ private fun LegacyMiniPlayer(
                 )
             }
         }
-        
+
         // Visual indicator
         if (offsetXAnimatable.value.absoluteValue > 50f) {
             Box(

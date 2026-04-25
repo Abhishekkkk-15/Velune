@@ -244,7 +244,7 @@ private fun RowScope.GlassNavigationBarItem(
                         )
                     }
                 }
-                .padding(horizontal = 24.dp, vertical = 6.dp),
+                .padding(horizontal = 16.dp, vertical = 6.dp),
             contentAlignment = Alignment.Center,
         ) {
             icon()

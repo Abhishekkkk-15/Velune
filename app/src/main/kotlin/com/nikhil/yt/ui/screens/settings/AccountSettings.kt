@@ -8,6 +8,7 @@
 
 package com.nikhil.yt.ui.screens.settings
 
+import androidx.compose.animation.AnimatedContent
 import com.nikhil.yt.ui.component.VeluneLoader
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
@@ -86,6 +87,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
+import coil3.request.crossfade
 import kotlinx.coroutines.launch
 import com.nikhil.yt.App.Companion.forgetAccount
 import com.nikhil.yt.BuildConfig
@@ -131,7 +133,7 @@ fun AccountSettings(
     val (useLoginForBrowse, onUseLoginForBrowseChange) = rememberPreference(UseLoginForBrowse, true)
     val (ytmSync, onYtmSyncChange) = rememberPreference(YtmSyncKey, true)
 
-    val viewModel: HomeViewModel = hiltViewModel()
+    val viewModel: HomeViewModel = hiltViewModel(context as androidx.activity.ComponentActivity)
     val accountName by viewModel.accountName.collectAsState()
     val accountImageUrl by viewModel.accountImageUrl.collectAsState()
 
@@ -156,7 +158,7 @@ fun AccountSettings(
             // Account Card
             AccountCard(
                 isLoggedIn = isLoggedIn,
-                accountName = accountName,
+                accountName = accountName ?:"",
                 accountEmail = accountEmail,
                 accountImageUrl = accountImageUrl,
                 onAccountClick = {
@@ -416,7 +418,10 @@ private fun AccountCard(
             ) {
                 if (isLoggedIn && accountImageUrl != null) {
                     AsyncImage(
-                        model = accountImageUrl,
+                        model = coil3.request.ImageRequest.Builder(LocalContext.current)
+                            .data(accountImageUrl)
+                            .crossfade(true)
+                            .build(),
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier
@@ -471,23 +476,29 @@ private fun AccountCard(
             }
 
             // Logout Button or Arrow
-            if (isLoggedIn) {
-                FilledTonalButton(
-                    onClick = onLogout,
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text(
-                        text = stringResource(R.string.action_logout),
-                        style = MaterialTheme.typography.labelMedium
+            AnimatedContent(
+                targetState = isLoggedIn,
+                label = "LoginLogoutButtonAnimation"
+            ) { targetIsLoggedIn ->
+                if (targetIsLoggedIn) {
+                    FilledTonalButton(
+                        onClick = onLogout,
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text(
+                            text = stringResource(R.string.action_logout), // Or whatever your string resource is named
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                    }
+                } else {
+                    Icon(
+                        painter = painterResource(R.drawable.arrow_forward), // Make sure this matches your arrow drawable
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-            } else {
-                Icon(
-                    painter = painterResource(R.drawable.arrow_forward),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
+
         }
     }
 }

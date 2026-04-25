@@ -70,10 +70,11 @@ object YTPlayerUtils {
      * Clients used for fallback streams in case the streams of the main client do not work.
      */
     private val STREAM_FALLBACK_CLIENTS: Array<YouTubeClient> = arrayOf(
+        TVHTML5_SIMPLY_EMBEDDED_PLAYER,
+        IOS_MUSIC,
         IOS,
         MOBILE,
         ANDROID_MUSIC,
-        IOS_MUSIC,
         ANDROID_VR_NO_AUTH,
         ANDROID_VR_1_61_48,
         ANDROID_VR_1_43_32,
@@ -83,7 +84,6 @@ object YTPlayerUtils {
         IPADOS,
         VISIONOS,
         TVHTML5,
-        TVHTML5_SIMPLY_EMBEDDED_PLAYER,
         WEB,
         WEB_CREATOR,
         WEB_REMIX
@@ -219,7 +219,7 @@ object YTPlayerUtils {
                 PlayerStreamClient.ANDROID_VR -> ANDROID_VR_NO_AUTH
                 PlayerStreamClient.WEB_REMIX -> WEB_REMIX
                 PlayerStreamClient.IOS -> IOS
-                PlayerStreamClient.TVHTML5 -> TVHTML5
+                PlayerStreamClient.TVHTML5 -> TVHTML5_SIMPLY_EMBEDDED_PLAYER
                 PlayerStreamClient.ANDROID_MUSIC -> ANDROID_MUSIC
             }
 
@@ -321,7 +321,10 @@ object YTPlayerUtils {
             streamUrl = selectedUrl
             streamExpiresInSeconds = streamPlayerResponse.streamingData?.expiresInSeconds
 
-            if (streamExpiresInSeconds == null) continue
+            if (streamExpiresInSeconds == null) {
+                streamPlayerResponse = null
+                continue
+            }
 
             Timber.tag(logTag).i("Format found: ${format.mimeType}, bitrate: ${format.bitrate}")
             Timber.tag(logTag).v("Stream expires in: $streamExpiresInSeconds seconds")

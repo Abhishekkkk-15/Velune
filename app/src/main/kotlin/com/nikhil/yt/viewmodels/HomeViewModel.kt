@@ -77,7 +77,7 @@ class HomeViewModel @Inject constructor(
     val allYtItems = MutableStateFlow<List<YTItem>>(emptyList())
 
     // Account display info
-    val accountName = MutableStateFlow("Guest")
+    val accountName = MutableStateFlow<String?>(null)
     val accountImageUrl = MutableStateFlow<String?>(null)
     
     // Track last processed cookie to avoid unnecessary updates

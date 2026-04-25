@@ -39,12 +39,10 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -61,21 +59,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialogDefaults
-import androidx.compose.material3.Badge
-import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.core.content.ContextCompat
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
@@ -87,13 +78,13 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.contentColorFor
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -102,7 +93,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
@@ -122,7 +112,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastAny
-import androidx.compose.ui.util.fastFirstOrNull
 import androidx.compose.ui.util.fastForEach
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -141,7 +130,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.window.core.layout.WindowSizeClass
-import coil3.compose.AsyncImage
 import coil3.imageLoader
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
@@ -204,7 +192,6 @@ import com.nikhil.yt.ui.component.IconButton
 import com.nikhil.yt.ui.component.LocalBottomSheetPageState
 import com.nikhil.yt.ui.component.LocalMenuState
 import com.nikhil.yt.ui.component.StarDialog
-import com.mikepenz.markdown.m3.Markdown
 import com.nikhil.yt.ui.component.TopSearch
 import com.nikhil.yt.ui.component.rememberBottomSheetState
 import com.nikhil.yt.ui.component.shimmer.ShimmerTheme
@@ -227,7 +214,6 @@ import com.nikhil.yt.ui.utils.resetHeightOffset
 import com.nikhil.yt.utils.SyncUtils
 import com.nikhil.yt.utils.dataStore
 import com.nikhil.yt.utils.get
-import com.nikhil.yt.utils.getAsync
 import com.nikhil.yt.utils.rememberEnumPreference
 import com.nikhil.yt.utils.rememberPreference
 import com.nikhil.yt.utils.reportException
@@ -237,7 +223,6 @@ import java.net.URLDecoder
 import java.net.URLEncoder
 import java.util.Locale
 import javax.inject.Inject
-import kotlin.time.Duration.Companion.days
 
 @Suppress("DEPRECATION", "ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
 @AndroidEntryPoint
@@ -517,9 +502,10 @@ class MainActivity : ComponentActivity() {
             //     }
             // }
 
+
             val enableDynamicTheme by rememberPreference(DynamicThemeKey, defaultValue = true)
             val customThemeColorValue by rememberPreference(CustomThemeColorKey, defaultValue = "default")
-            val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.AUTO)
+            val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.ON)
             val useSystemFont by rememberPreference(UseSystemFontKey, defaultValue = false)
             val isSystemInDarkTheme = isSystemInDarkTheme()
             val useDarkTheme =
@@ -529,7 +515,7 @@ class MainActivity : ComponentActivity() {
             LaunchedEffect(useDarkTheme) {
                 setSystemBarAppearance(useDarkTheme)
             }
-            val pureBlackEnabled by rememberPreference(PureBlackKey, defaultValue = false)
+            val pureBlackEnabled by rememberPreference(PureBlackKey, defaultValue = true)
             val pureBlack = pureBlackEnabled && useDarkTheme
 
             val customThemeSeedPalette = remember(customThemeColorValue) {
@@ -741,7 +727,7 @@ class MainActivity : ComponentActivity() {
                             expandedBound = maxHeight,
                         )
 
-                    var yearInMusicSavedPlayerAnchor by rememberSaveable { mutableStateOf(-1) }
+                    var yearInMusicSavedPlayerAnchor by rememberSaveable { mutableIntStateOf(-1) }
 
                     LaunchedEffect(isYearInMusicScreen) {
                         val controller = WindowCompat.getInsetsController(window, window.decorView)
@@ -1448,7 +1434,7 @@ class MainActivity : ComponentActivity() {
                                     .nestedScroll(searchBarScrollBehavior.nestedScrollConnection)
                             ) {
 
-                                NavHost(
+                                 NavHost(
                                     navController = navController,
                                     startDestination = when (tabOpenedFromShortcut ?: defaultOpenTab) {
                                         NavigationTab.HOME -> Screens.Home
@@ -1495,24 +1481,46 @@ class MainActivity : ComponentActivity() {
                                             ) { -it / 2 }
                                         }
                                     },
-                                    popEnterTransition = {
-                                        if ((initialState.destination.route in topLevelScreens || initialState.destination.route?.startsWith("search/") == true) && targetState.destination.route in topLevelScreens) {
-                                            fadeIn(tween(300))
-                                        } else {
-                                            fadeIn(tween(300)) + slideInHorizontally(
-                                                animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)
-                                            ) { -it / 2 }
-                                        }
-                                    },
-                                    popExitTransition = {
-                                        if ((initialState.destination.route in topLevelScreens || initialState.destination.route?.startsWith("search/") == true) && targetState.destination.route in topLevelScreens) {
-                                            fadeOut(tween(300))
-                                        } else {
-                                            fadeOut(tween(300)) + slideOutHorizontally(
-                                                animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)
-                                            ) { it / 2 }
-                                        }
-                                    },
+                                     popEnterTransition = {
+                                         val initialIndex = navigationItems.indexOfFirst { it.route == initialState.destination.route }
+                                         val targetIndex = navigationItems.indexOfFirst { it.route == targetState.destination.route }
+
+                                         if (initialState.destination.route in topLevelScreens && targetState.destination.route in topLevelScreens) {
+                                             val direction = if (targetIndex > initialIndex) {
+                                                 AnimatedContentTransitionScope.SlideDirection.Left
+                                             } else {
+                                                 AnimatedContentTransitionScope.SlideDirection.Right
+                                             }
+                                             slideIntoContainer(
+                                                 towards = direction,
+                                                 animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)
+                                             )
+                                         } else {
+                                             fadeIn(tween(300)) + slideInHorizontally(
+                                                 animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)
+                                             ) { -it / 2 }
+                                         }
+                                     },
+                                     popExitTransition = {
+                                         val initialIndex = navigationItems.indexOfFirst { it.route == initialState.destination.route }
+                                         val targetIndex = navigationItems.indexOfFirst { it.route == targetState.destination.route }
+
+                                         if (initialState.destination.route in topLevelScreens && targetState.destination.route in topLevelScreens) {
+                                             val direction = if (targetIndex > initialIndex) {
+                                                 AnimatedContentTransitionScope.SlideDirection.Left
+                                             } else {
+                                                 AnimatedContentTransitionScope.SlideDirection.Right
+                                             }
+                                             slideOutOfContainer(
+                                                 towards = direction,
+                                                 animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)
+                                             )
+                                         } else {
+                                             fadeOut(tween(300)) + slideOutHorizontally(
+                                                 animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)
+                                             ) { it / 2 }
+                                         }
+                                     },
                                     modifier = Modifier.nestedScroll(
                                         if (navigationItems.fastAny { it.route == navBackStackEntry?.destination?.route } ||
                                             navBackStackEntry?.destination?.route?.startsWith("search/") == true

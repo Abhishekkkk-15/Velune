@@ -147,7 +147,7 @@ fun HomeScreen(
 
     if (selectedChip != null) {
         BackHandler {
-            // if a chip is selected, go back to the normal homepage first
+
             viewModel.toggleChip(selectedChip)
         }
     }
@@ -162,7 +162,7 @@ fun HomeScreen(
         forgottenFavoritesLazyGridState.scrollToItem(0)
     }
 
-    // Capture M3 Expressive colors from theme outside drawBehind
+
     val color1 = MaterialTheme.colorScheme.primary
     val color2 = MaterialTheme.colorScheme.secondary
     val color3 = MaterialTheme.colorScheme.tertiary
@@ -173,20 +173,19 @@ fun HomeScreen(
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
-        // M3E Mesh gradient background layer at the top
+
         if (!disableBlur) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .fillMaxSize(0.7f) // Cover top 70% of screen
+                    .fillMaxSize(0.7f)
                     .align(Alignment.TopCenter)
                     .zIndex(-1f) // Place behind all content
                     .drawWithCache {
                         val width = this.size.width
                         val height = this.size.height
 
-                        // Create mesh gradient with 5 color blobs for more variation
-                        // First color blob - top left
+
                         val brush1 = Brush.radialGradient(
                             colors = listOf(
                                 color1.copy(alpha = 0.38f),
@@ -199,7 +198,7 @@ fun HomeScreen(
                             radius = width * 0.55f
                         )
 
-                        // Second color blob - top right
+
                         val brush2 = Brush.radialGradient(
                             colors = listOf(
                                 color2.copy(alpha = 0.34f),
@@ -212,7 +211,7 @@ fun HomeScreen(
                             radius = width * 0.65f
                         )
 
-                        // Third color blob - middle left
+
                         val brush3 = Brush.radialGradient(
                             colors = listOf(
                                 color3.copy(alpha = 0.3f),
@@ -225,7 +224,7 @@ fun HomeScreen(
                             radius = width * 0.6f
                         )
 
-                        // Fourth color blob - middle right
+
                         val brush4 = Brush.radialGradient(
                             colors = listOf(
                                 color4.copy(alpha = 0.26f),
@@ -238,7 +237,7 @@ fun HomeScreen(
                             radius = width * 0.7f
                         )
 
-                        // Fifth color blob - bottom center (helps with smooth fade)
+
                         val brush5 = Brush.radialGradient(
                             colors = listOf(
                                 color5.copy(alpha = 0.22f),
@@ -251,7 +250,7 @@ fun HomeScreen(
                             radius = width * 0.8f
                         )
 
-                        // Add a final vertical gradient overlay to ensure smooth bottom fade
+
                         val overlayBrush = Brush.verticalGradient(
                             colors = listOf(
                                 Color.Transparent,
@@ -335,7 +334,7 @@ fun HomeScreen(
                 }
             }
 
-            // Quick picks list style (below carousel)
+
             quickPicks?.takeIf { it.isNotEmpty() }?.let { picks ->
                 item {
                     QuickPicksListSection(
