@@ -27,7 +27,7 @@
     <string name="keep_listening">Continuez à écouter</string>
     <string name="your_youtube_playlists">Vos playlists YouTube</string>
     <string name="similar_to">Similaire à</string>
-    <string name="new_release_albums">New release albums</string>
+    <string name="new_release_albums">Nouveautés</string>
     <string name="select_playlist_to_sync">Select Playlist To Sync</string>
     <string name="integration">Integration</string>
     <string name="integrations">Integrations</string>
@@ -779,7 +779,7 @@ Velune will only extract your token, and everything else is stored locally.</str
     <string name="generating_tokens">Generating tokens…</string>
     <string name="tokens_generated">Tokens generated successfully</string>
     <string name="token_generation_failed">Token generation failed</string>
-    <string name="open_account_before_extract">Open and sign in on youtube.com/account before extracting</string>
+    <string name="open_account_before_extract">Ouvrez la page youtube.com/account et connectez-vous avant de procéder à l\'extraction</string>
     <string name="token_copied">Token copied to clipboard</string>
     <string name="no_visitor_data">No visitor data available. Tokens cannot be generated.</string>
     <string name="extracting_from_url">Extracting tokens from URL…</string>
