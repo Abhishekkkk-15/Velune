@@ -23,6 +23,7 @@ gen/
 out/
 .gradle/
 .kotlin/
+app/universal/release/
 
 # Local configuration file
 local.properties
