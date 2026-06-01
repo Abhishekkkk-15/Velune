@@ -1,0 +1,279 @@
+.page {
+  display: flex;
+  height: 100%;
+  min-height: 100%;
+}
+
+.sidebar {
+  width: 220px;
+  min-width: 220px;
+  border-right: 1px solid var(--outline-variant);
+  padding: 24px 12px;
+  display: flex;
+  flex-direction: column;
+}
+
+.title {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--on-surface);
+  padding: 0 12px;
+  margin-bottom: 16px;
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  color: var(--on-surface-variant);
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 0.15s, color 0.15s;
+  cursor: pointer;
+}
+.navItem:hover { background: var(--surface-container); color: var(--on-surface); }
+.navActive {
+  background: var(--surface-container-high);
+  color: var(--primary);
+}
+
+.chevron {
+  margin-left: auto;
+  opacity: 0.5;
+}
+
+.content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 32px;
+}
+
+.sectionContent {
+  max-width: 600px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sectionHeader {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--primary);
+  margin: 16px 0 8px;
+}
+.sectionContent .sectionHeader:first-child { margin-top: 0; }
+
+.settingRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border-radius: var(--radius-lg);
+  transition: background 0.15s;
+}
+.settingRow:hover { background: var(--surface-container); }
+
+.settingInfo { flex: 1; }
+.settingLabel { font-size: 14px; font-weight: 500; color: var(--on-surface); }
+.settingDesc { font-size: 12px; color: var(--on-surface-variant); margin-top: 2px; }
+
+.settingControl {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.toggle {
+  width: 48px;
+  height: 26px;
+  border-radius: var(--radius-full);
+  background: var(--outline);
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.toggle.toggleOn { background: var(--primary); }
+
+.toggleThumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: white;
+  transition: transform 0.2s;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+.toggleOn .toggleThumb { transform: translateX(22px); }
+
+.sliderRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sliderLabel { font-size: 12px; color: var(--on-surface-variant); min-width: 20px; }
+.slider { width: 120px; cursor: pointer; }
+.sliderValue { font-size: 12px; color: var(--on-surface-variant); min-width: 28px; text-align: right; }
+
+.select {
+  background: var(--surface-container-high);
+  color: var(--on-surface);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  outline: none;
+}
+.select:focus { border-color: var(--primary); }
+
+.input {
+  background: var(--surface-container-high);
+  color: var(--on-surface);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  width: 200px;
+}
+.input:focus { border-color: var(--primary); }
+
+.dangerBtn {
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--error) 15%, transparent);
+  color: var(--error);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  border: 1px solid color-mix(in srgb, var(--error) 30%, transparent);
+  transition: background 0.15s;
+}
+.dangerBtn:hover { background: color-mix(in srgb, var(--error) 25%, transparent); }
+
+.saveRow {
+  padding: 8px 16px;
+}
+.saveBtn {
+  padding: 10px 20px;
+  border-radius: var(--radius-full);
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: opacity 0.15s;
+}
+.saveBtn:hover { opacity: 0.85; }
+
+.colorPicker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 16px;
+}
+
+.colorSwatch {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid transparent;
+  transition: transform 0.15s;
+}
+.colorSwatch:hover { transform: scale(1.15); }
+.colorSwatchActive { border-color: white; box-shadow: 0 0 0 3px var(--outline); }
+
+.aboutCard {
+  background: var(--surface-container);
+  border-radius: var(--radius-xl);
+  padding: 32px;
+  text-align: center;
+  border: 1px solid var(--outline-variant);
+  margin-bottom: 16px;
+}
+
+.aboutLogo { font-size: 64px; margin-bottom: 12px; }
+.aboutName { font-size: 28px; font-weight: 800; color: var(--on-surface); margin-bottom: 4px; }
+.aboutTagline { font-size: 16px; color: var(--on-surface-variant); margin-bottom: 8px; }
+.aboutVersion { font-size: 13px; color: var(--on-surface-variant); margin-bottom: 16px; }
+
+.aboutBadges {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.badge {
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--primary) 20%, transparent);
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.aboutDesc {
+  font-size: 14px;
+  color: var(--on-surface-variant);
+  line-height: 1.7;
+  max-width: 400px;
+  margin: 0 auto 20px;
+}
+
+.aboutLink {
+  display: inline-block;
+  color: var(--primary);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.aboutLink:hover { text-decoration: underline; }
+
+.licenseNote {
+  text-align: center;
+  font-size: 12px;
+  color: var(--on-surface-variant);
+}
+
+.statValue {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--on-surface);
+}
+
+.successBtn {
+  background: var(--tertiary, #2e7d32) !important;
+  color: white !important;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+  display: inline-block;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

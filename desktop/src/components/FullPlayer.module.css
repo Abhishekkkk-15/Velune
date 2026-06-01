@@ -1,0 +1,190 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  padding: 20px 24px 12px;
+  gap: 12px;
+}
+
+.headerTitle {
+  flex: 1;
+  text-align: center;
+}
+
+.body {
+  flex: 1;
+  display: flex;
+  gap: 0;
+  overflow: hidden;
+  padding: 0 24px 24px;
+}
+
+.left {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  min-width: 0;
+}
+
+.right {
+  width: 380px;
+  min-width: 300px;
+  overflow: hidden;
+  border-left: 1px solid var(--outline-variant);
+  margin-left: 24px;
+  padding-left: 24px;
+}
+
+.artWrapper {
+  width: min(360px, 60vh);
+  aspect-ratio: 1;
+  flex-shrink: 0;
+}
+
+.albumArt {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius-xl);
+  object-fit: cover;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.5);
+}
+
+.trackInfo {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.trackMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.trackTitle {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--on-surface);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trackArtist {
+  font-size: 15px;
+  color: var(--on-surface-variant);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.progressArea {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.progressBar {
+  cursor: pointer;
+  padding: 8px 0;
+}
+
+.progressTrack {
+  height: 4px;
+  background: var(--outline);
+  border-radius: var(--radius-full);
+  position: relative;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: width 0.1s linear;
+}
+
+.progressThumb {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.progressBar:hover .progressThumb {
+  opacity: 1;
+}
+
+.times {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--on-surface-variant);
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.iconBtn {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--on-surface-variant);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.iconBtn:hover { background: var(--surface-container); }
+.iconBtn.active { color: var(--primary); }
+
+.playBtn {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  transition: transform 0.15s, opacity 0.15s;
+}
+.playBtn:hover { transform: scale(1.05); }
+.playBtn:active { transform: scale(0.96); }
+
+.extra {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.volume {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.volumeSlider {
+  width: 120px;
+  height: 4px;
+  cursor: pointer;
+}

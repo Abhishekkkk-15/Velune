@@ -1,0 +1,87 @@
+.page {
+  padding: 32px 32px 24px;
+  min-height: 100%;
+}
+
+.heroArea {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 32px;
+}
+
+.greeting {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--on-surface);
+  text-transform: capitalize;
+}
+
+.shuffleBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: var(--radius-full);
+  background: var(--surface-container);
+  color: var(--on-surface);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s;
+  border: 1px solid var(--outline-variant);
+}
+.shuffleBtn:hover { background: var(--surface-container-high); }
+
+.error {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--on-surface-variant);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.retryBtn {
+  padding: 8px 20px;
+  border-radius: var(--radius-full);
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.sections {
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+}
+
+.section { }
+
+.sectionTitle {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--on-surface);
+  margin-bottom: 16px;
+}
+
+.sectionTitleShimmer {
+  height: 22px;
+  width: 200px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+}
+
+.cardRow {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  scrollbar-width: none;
+}
+.cardRow::-webkit-scrollbar { display: none; }

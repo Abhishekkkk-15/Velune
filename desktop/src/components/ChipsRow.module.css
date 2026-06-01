@@ -1,0 +1,31 @@
+.row {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 0;
+  scrollbar-width: none;
+}
+.row::-webkit-scrollbar { display: none; }
+
+.chip {
+  padding: 8px 16px;
+  border-radius: var(--radius-full);
+  font-size: 13px;
+  font-weight: 500;
+  background: var(--surface-container);
+  color: var(--on-surface-variant);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+  border: 1px solid var(--outline-variant);
+  font-family: inherit;
+}
+.chip:hover {
+  background: var(--surface-container-high);
+  color: var(--on-surface);
+}
+.chip.selected {
+  background: var(--primary);
+  color: var(--on-primary);
+  border-color: var(--primary);
+}
