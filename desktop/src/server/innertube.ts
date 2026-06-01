@@ -324,7 +324,7 @@ export class InnerTube {
       try {
         // Build "Because you listened to..." using the most recent track
         const latestId = historyIds[0]
-        const nextData = await this.getNext(latestId)
+        const nextData = await this.getNext(latestId, `RDAMVM${latestId}`)
         if (nextData.queue && nextData.queue.length > 0) {
           const seedTrack = nextData.queue[0] // The seed is usually first
           sections.push({
@@ -336,7 +336,7 @@ export class InnerTube {
         // Build a "Mixed for you" from another recent track
         if (historyIds.length > 1) {
           const randomId = historyIds[Math.floor(Math.random() * Math.min(historyIds.length - 1, 4)) + 1]
-          const mixData = await this.getNext(randomId)
+          const mixData = await this.getNext(randomId, `RDAMVM${randomId}`)
           if (mixData.queue && mixData.queue.length > 0) {
             sections.push({
               title: `Mixed for you`,
@@ -366,7 +366,10 @@ export class InnerTube {
             : c.musicResponsiveListItemRenderer ? parseYTItem(c.musicResponsiveListItemRenderer)
               : null
         ).filter(Boolean)
-        if (items.length > 0) sections.push({ title, items })
+        const tLower = title.toLowerCase()
+        if (items.length > 0 && !tLower.includes('trending') && !tLower.includes('winner energy')) {
+          sections.push({ title, items })
+        }
       }
 
       if (grid) {
@@ -374,7 +377,10 @@ export class InnerTube {
         const items = (grid.items || []).map((c: any) =>
           c.musicTwoRowItemRenderer ? parseTwoRowItem(c.musicTwoRowItemRenderer) : null
         ).filter(Boolean)
-        if (items.length > 0) sections.push({ title, items })
+        const tLower = title.toLowerCase()
+        if (items.length > 0 && !tLower.includes('trending') && !tLower.includes('winner energy')) {
+          sections.push({ title, items })
+        }
       }
     }
 
@@ -405,6 +411,7 @@ export class InnerTube {
     for (const section of tabs) {
       const shelf = section.musicShelfRenderer
       const carousel = section.musicCarouselShelfRenderer
+      const cardShelf = section.musicCardShelfRenderer
 
       if (shelf) {
         const sectionTitle = getRuns(shelf.title?.runs || [])
@@ -415,14 +422,20 @@ export class InnerTube {
         ).filter(Boolean)
         items.push(...sectionItems)
         if (!filter) sections.push({ title: sectionTitle, items: sectionItems })
-      }
-
-      if (carousel && !filter) {
+      } else if (carousel && !filter) {
         const sectionTitle = getRuns(carousel.header?.musicCarouselShelfBasicHeaderRenderer?.title?.runs || [])
         const sectionItems = (carousel.contents || []).map((c: any) =>
           c.musicTwoRowItemRenderer ? parseTwoRowItem(c.musicTwoRowItemRenderer) : null
         ).filter(Boolean)
         if (sectionItems.length > 0) sections.push({ title: sectionTitle, items: sectionItems })
+      } else if (cardShelf) {
+        const cardItem = parseYTItem(cardShelf) || parseTwoRowItem(cardShelf)
+        if (cardItem) items.push(cardItem)
+      } else if (section.itemSectionRenderer?.contents) {
+        const sectionItems = section.itemSectionRenderer.contents.map((c: any) =>
+          c.musicResponsiveListItemRenderer ? parseYTItem(c.musicResponsiveListItemRenderer) : null
+        ).filter(Boolean)
+        items.push(...sectionItems)
       }
     }
 

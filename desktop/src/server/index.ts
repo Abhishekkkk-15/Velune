@@ -1,6 +1,24 @@
+import fs from 'fs'
+import os from 'os'
+import path from 'path'
+
+try {
+  const logFile = path.join(os.homedir(), '.velune', 'server_crash.log')
+  if (!fs.existsSync(path.dirname(logFile))) fs.mkdirSync(path.dirname(logFile), { recursive: true })
+  fs.writeFileSync(logFile, `Server starting at ${new Date().toISOString()}\n`, { flag: 'a' })
+  
+  process.on('uncaughtException', (err) => {
+    fs.writeFileSync(logFile, `[Uncaught] ${err.stack || err}\n`, { flag: 'a' })
+  })
+  process.on('unhandledRejection', (reason) => {
+    fs.writeFileSync(logFile, `[Unhandled] ${reason}\n`, { flag: 'a' })
+  })
+} catch (e) {
+  // Ignore
+}
+
 import express from 'express'
 import cors from 'cors'
-import fs from 'fs'
 import { InnerTube } from './innertube'
 import { ensureAudioCached, clearStreamCache, getCacheStats } from './streams'
 import {
@@ -167,6 +185,8 @@ app.post('/api/downloads/clear', (req, res) => {
   res.json({ ok: true })
 })
 
+import nodeFetch from 'node-fetch'
+
 app.get('/api/image', async (req, res) => {
   try {
     const { url } = req.query
@@ -174,14 +194,19 @@ app.get('/api/image', async (req, res) => {
     const allowed = ['yt3.ggpht.com', 'lh3.googleusercontent.com', 'i.ytimg.com', 'ytimg.com', 'yt3.googleusercontent.com', 'googleusercontent.com']
     const parsed = new URL(url)
     if (!allowed.some(h => parsed.hostname.endsWith(h))) return res.status(403).json({ error: 'Disallowed host' })
-    const imgRes = await fetch(url, {
+    
+    const imgRes = await nodeFetch(url, {
       headers: { 'User-Agent': 'Mozilla/5.0', 'Referer': 'https://music.youtube.com/' },
     })
     if (!imgRes.ok) return res.status(imgRes.status).end()
+    
     res.setHeader('Content-Type', imgRes.headers.get('content-type') || 'image/jpeg')
     res.setHeader('Cache-Control', 'public, max-age=86400')
-    res.send(Buffer.from(await imgRes.arrayBuffer()))
-  } catch (e: any) { res.status(500).json({ error: e.message }) }
+    imgRes.body.pipe(res)
+  } catch (e: any) { 
+    console.error('[Image proxy error]', e)
+    res.status(500).json({ error: e.message }) 
+  }
 })
 
 app.get('/api/lyrics', async (req, res) => {

@@ -1,11 +1,12 @@
 import { motion } from 'framer-motion'
 import { useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Play, Shuffle, ListMusic } from 'lucide-react'
+import { Play, Shuffle, ListMusic, Heart } from 'lucide-react'
 import { api } from '../api/client'
 import TrackItem from '../components/TrackItem'
 import { TrackShimmerList } from '../components/ShimmerLoader'
 import { usePlayerStore } from '../store/playerStore'
+import { useLibraryStore } from '../store/libraryStore'
 import styles from './PlaylistScreen.module.css'
 
 const pageVariants = {
@@ -17,6 +18,9 @@ const pageVariants = {
 export default function PlaylistScreen() {
   const { id } = useParams<{ id: string }>()
   const { setQueue } = usePlayerStore()
+  const { savePlaylist, unsavePlaylist, isPlaylistSaved } = useLibraryStore()
+  
+  const isSaved = isPlaylistSaved(id!)
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['playlist', id],
@@ -79,6 +83,16 @@ export default function PlaylistScreen() {
                 <button className={styles.shuffleBtn} onClick={handleShuffle}>
                   <Shuffle size={18} />
                   Shuffle
+                </button>
+                <button 
+                  className={styles.shuffleBtn} 
+                  onClick={() => {
+                    if (isSaved) unsavePlaylist(id!)
+                    else savePlaylist({ id: id!, title: data.title, thumbnail: data.thumbnail })
+                  }}
+                  title={isSaved ? "Remove from Library" : "Save to Library"}
+                >
+                  <Heart size={18} fill={isSaved ? "var(--primary)" : "transparent"} color={isSaved ? "var(--primary)" : "currentColor"} />
                 </button>
               </div>
             </div>

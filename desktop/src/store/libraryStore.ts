@@ -14,6 +14,7 @@ type DownloadStatus = 'pending' | 'downloading' | 'done' | 'error'
 
 interface LibraryState {
   likedSongs: Track[]
+  savedPlaylists: { id: string, title: string, thumbnail?: string }[]
   playlists: PlaylistLocal[]
   history: Track[]
   downloads: Record<string, DownloadStatus>
@@ -21,6 +22,10 @@ interface LibraryState {
   likeSong: (track: Track) => void
   unlikeSong: (id: string) => void
   isLiked: (id: string) => boolean
+  
+  savePlaylist: (playlist: { id: string, title: string, thumbnail?: string }) => void
+  unsavePlaylist: (id: string) => void
+  isPlaylistSaved: (id: string) => boolean
 
   createPlaylist: (name: string) => string
   deletePlaylist: (id: string) => void
@@ -40,6 +45,7 @@ export const useLibraryStore = create<LibraryState>()(
   persist(
     (set, get) => ({
       likedSongs: [],
+      savedPlaylists: [],
       playlists: [],
       history: [],
       downloads: {},
@@ -50,6 +56,13 @@ export const useLibraryStore = create<LibraryState>()(
       }),
       unlikeSong: (id) => set(s => ({ likedSongs: s.likedSongs.filter(t => t.id !== id) })),
       isLiked: (id) => !!get().likedSongs.find(t => t.id === id),
+
+      savePlaylist: (playlist) => set(s => {
+        if (s.savedPlaylists?.find(p => p.id === playlist.id)) return s
+        return { savedPlaylists: [playlist, ...(s.savedPlaylists || [])] }
+      }),
+      unsavePlaylist: (id) => set(s => ({ savedPlaylists: (s.savedPlaylists || []).filter(p => p.id !== id) })),
+      isPlaylistSaved: (id) => !!(get().savedPlaylists || []).find(p => p.id === id),
 
       createPlaylist: (name) => {
         const id = `pl_${Date.now()}`

@@ -156,6 +156,22 @@ export default function SearchScreen() {
           )}
 
           {/* Summary sections (no filter) */}
+          {!filter && data.items.length > 0 && (
+            <div className={styles.section}>
+              <h3 className={styles.sectionTitle}>Top Results</h3>
+              <div>
+                {(data.items as YTTrack[]).filter(i => i.type === 'song' || i.type === 'video').map((track, j) => (
+                  <TrackItem key={track.id} track={track} queue={data.items as YTTrack[]} />
+                ))}
+              </div>
+              <div className={styles.cardGrid}>
+                {data.items.filter(i => i.type !== 'song' && i.type !== 'video').map((item, j) => (
+                  <MediaCard key={`${item.id}-${j}`} item={item} />
+                ))}
+              </div>
+            </div>
+          )}
+          
           {!filter && data.sections.map((section, i) => (
             <div key={i} className={styles.section}>
               <h3 className={styles.sectionTitle}>{section.title}</h3>

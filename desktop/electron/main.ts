@@ -1,9 +1,8 @@
-import { app, BrowserWindow, ipcMain, shell, nativeTheme, session } from 'electron'
-import { spawn, ChildProcess } from 'child_process'
+import { app, BrowserWindow, ipcMain, shell, nativeTheme, session, utilityProcess, UtilityProcess } from 'electron'
 import path from 'path'
 
 let mainWindow: BrowserWindow | null = null
-let apiProcess: ChildProcess | null = null
+let apiProcess: UtilityProcess | null = null
 
 const DEV_PORT = 5000
 const isDev = !app.isPackaged
@@ -14,18 +13,24 @@ function startApiServer() {
     return
   }
 
-  const serverScript = path.join(__dirname, '..', 'server', 'index.js')
-  const cmd = 'node'
-  const args = [serverScript]
-
-  apiProcess = spawn(cmd, args, {
-    stdio: 'pipe',
-    env: { ...process.env },
-    shell: process.platform === 'win32',
-  })
-  apiProcess.stdout?.on('data', (d: Buffer) => console.log('[API]', d.toString().trim()))
-  apiProcess.stderr?.on('data', (d: Buffer) => console.error('[API ERR]', d.toString().trim()))
-  apiProcess.on('exit', (code: number | null) => console.log(`[API] exited with code ${code}`))
+  let serverScript = path.join(__dirname, '..', 'dist-server', 'index.js')
+  if (serverScript.includes('app.asar')) {
+    serverScript = serverScript.replace('app.asar', 'app.asar.unpacked')
+  }
+  try {
+    apiProcess = utilityProcess.fork(serverScript, [], {
+      stdio: 'pipe'
+    })
+    apiProcess.stdout?.on('data', (d: Buffer) => console.log('[API]', d.toString().trim()))
+    apiProcess.stderr?.on('data', (d: Buffer) => console.error('[API ERR]', d.toString().trim()))
+    apiProcess.on('exit', (code: number) => console.log(`[API] exited with code ${code}`))
+    console.log('[API] Server spawned via utilityProcess')
+  } catch (err: any) {
+    console.error('[API ERR] Failed to start server:', err)
+    import('electron').then(({ dialog }) => {
+      dialog.showErrorBox('Server Start Error', err ? err.stack || err.message : 'Unknown error')
+    })
+  }
 }
 
 function createWindow() {
@@ -38,6 +43,7 @@ function createWindow() {
     minHeight: 600,
     titleBarStyle: 'hiddenInset',
     backgroundColor: '#0a0a0a',
+    icon: path.join(__dirname, '..', 'assets', 'icon.png'),
     webPreferences: {
       preload: preloadPath,
       contextIsolation: true,

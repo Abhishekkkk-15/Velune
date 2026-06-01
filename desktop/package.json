@@ -1,14 +1,18 @@
 {
   "name": "velune-desktop",
   "version": "1.0.0",
+  "main": "dist-electron/main.js",
   "private": true,
+  "description": "Velune Desktop App - Modern music player",
+  "author": "Velune Team",
   "type": "module",
   "scripts": {
     "dev": "concurrently \"npm run dev:api\" \"npm run dev:renderer\"",
     "dev:renderer": "vite --port 5000 --host 0.0.0.0",
     "dev:api": "tsx watch src/server/index.ts",
     "electron:dev": "concurrently \"npm run dev:api\" \"npm run dev:renderer\" \"wait-on http://localhost:5000 && npx tsc -p electron/tsconfig.json && npx electron dist-electron/main.js\"",
-    "build": "vite build && npm run build:electron",
+    "build": "vite build && npm run build:server && npm run build:electron",
+    "build:server": "npx esbuild src/server/index.ts --bundle --platform=node --format=cjs --target=node20 --outfile=dist-server/index.js && node -e \"require('fs').writeFileSync('dist-server/package.json', JSON.stringify({ type: 'commonjs' }))\"",
     "build:electron": "tsc -p electron/tsconfig.json && node -e \"const fs = require('fs'); fs.mkdirSync('dist-electron', { recursive: true }); fs.writeFileSync('dist-electron/package.json', JSON.stringify({ type: 'commonjs' }))\"",
     "preview": "vite preview",
     "package": "npm run build && electron-builder"
@@ -49,19 +53,18 @@
   "build": {
     "appId": "com.velune.desktop",
     "productName": "Velune",
+    "icon": "assets/icon.png",
     "asar": true,
     "directories": {
-      "output": "release"
+      "output": "release-build"
     },
     "files": [
       "dist/**/*",
-      "dist-electron/**/*"
+      "dist-electron/**/*",
+      "dist-server/**/*"
     ],
-    "extraResources": [
-      {
-        "from": "node_modules/@distube/ytdl-core",
-        "to": "ytdl-core"
-      }
+    "asarUnpack": [
+      "dist-server/**/*"
     ],
     "win": {
       "target": "nsis"

@@ -26,7 +26,7 @@ export default function LibraryScreen() {
   const [tab, setTab] = useState('songs')
   const [showNewPlaylist, setShowNewPlaylist] = useState(false)
   const [newName, setNewName] = useState('')
-  const { likedSongs, playlists, history, createPlaylist, deletePlaylist } = useLibraryStore()
+  const { likedSongs, playlists, savedPlaylists, history, createPlaylist, deletePlaylist, unsavePlaylist } = useLibraryStore()
   const { setQueue } = usePlayerStore()
   const navigate = useNavigate()
 
@@ -204,14 +204,33 @@ export default function LibraryScreen() {
 
       {tab === 'playlists' && (
         <div className={styles.content}>
-          {playlists.length === 0 ? (
+          {playlists.length === 0 && (!savedPlaylists || savedPlaylists.length === 0) ? (
             <div className={styles.empty}>
               <ListMusic size={56} color="var(--outline)" />
               <p>No playlists yet</p>
-              <span>Create a playlist to organize your music</span>
+              <span>Create or save a playlist to organize your music</span>
             </div>
           ) : (
             <div className={styles.playlistGrid}>
+              {(savedPlaylists || []).map(pl => (
+                <div key={pl.id} className={styles.playlistCard} onClick={() => navigate(`/playlist/${pl.id}`)}>
+                  <div className={styles.playlistArt}>
+                    {pl.thumbnail
+                      ? <img src={proxyImage(pl.thumbnail)} alt="" />
+                      : <ListMusic size={32} color="var(--on-surface-variant)" />}
+                  </div>
+                  <div className={styles.playlistInfo}>
+                    <div className={styles.playlistName}>{pl.title}</div>
+                    <div className={styles.playlistCount}>Saved Playlist</div>
+                  </div>
+                  <button
+                    className={styles.deleteBtn}
+                    onClick={e => { e.stopPropagation(); unsavePlaylist(pl.id) }}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ))}
               {playlists.map(pl => (
                 <div key={pl.id} className={styles.playlistCard} onClick={() => {
                   if (pl.tracks.length > 0) setQueue(pl.tracks, 0)

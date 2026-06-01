@@ -1,4 +1,4 @@
-const BASE = '/api'
+const BASE = 'http://127.0.0.1:3001/api'
 
 async function get<T>(path: string, params?: Record<string, string | number | undefined>): Promise<T> {
   const url = new URL(BASE + path, window.location.origin)
@@ -39,12 +39,13 @@ async function del<T>(path: string): Promise<T> {
 
 export function proxyImage(url: string | undefined): string {
   if (!url) return ''
-  if (url.startsWith('/api/image')) return url
+  if (url.startsWith('http://127.0.0.1:3001/api/image')) return url
+  if (url.startsWith('/api/image')) return `http://127.0.0.1:3001${url}`
   const ytHosts = ['yt3.ggpht.com', 'lh3.googleusercontent.com', 'i.ytimg.com', 'ytimg.com', 'yt3.googleusercontent.com', 'googleusercontent.com']
   try {
     const parsed = new URL(url)
     if (ytHosts.some(h => parsed.hostname.endsWith(h))) {
-      return `/api/image?url=${encodeURIComponent(url)}`
+      return `http://127.0.0.1:3001/api/image?url=${encodeURIComponent(url)}`
     }
   } catch {}
   return url
@@ -120,8 +121,11 @@ export const api = {
   getNext: (videoId: string, playlistId?: string) =>
     get<{ queue: YTTrack[]; related: YTItem[] }>('/next', { videoId, playlistId }),
 
-  getStream: (videoId: string) =>
-    get<{ url: string; offline?: boolean }>('/stream', { videoId }),
+  getStream: async (videoId: string) => {
+    const res = await get<{ url: string; offline?: boolean }>('/stream', { videoId })
+    if (res.url.startsWith('/api/')) res.url = `http://127.0.0.1:3001${res.url}`
+    return res
+  },
 
   getLyrics: (title: string, artist: string, duration?: number) =>
     get<{ synced: boolean; lines: { time: number; text: string }[]; plain?: string } | null>(
