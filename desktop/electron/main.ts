@@ -13,7 +13,7 @@ function startApiServer() {
     return
   }
 
-  let serverScript = path.join(__dirname, '..', 'dist-server', 'index.js')
+  let serverScript = path.join(__dirname, '..', 'server', 'index.js')
   if (serverScript.includes('app.asar')) {
     serverScript = serverScript.replace('app.asar', 'app.asar.unpacked')
   }
@@ -57,7 +57,7 @@ function createWindow() {
     mainWindow.loadURL(`http://localhost:${DEV_PORT}`)
     mainWindow.webContents.openDevTools()
   } else {
-    mainWindow.loadFile(path.join(__dirname, '..', 'dist', 'index.html'))
+    mainWindow.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'))
   }
 
   mainWindow.once('ready-to-show', () => {
