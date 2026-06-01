@@ -96,7 +96,11 @@ export interface HomeSection {
 }
 
 export const api = {
-  getHome: () => get<{ sections: HomeSection[] }>('/home'),
+  getAuthStatus: () => get<{ status: string, code?: string, url?: string }>('/auth/status'),
+  startAuth: () => post<{ status: string, code?: string, url?: string }>('/auth/start'),
+  signout: () => post('/auth/signout'),
+
+  getHome: (historyIds?: string[]) => get<{ sections: HomeSection[] }>('/home', historyIds?.length ? { historyIds: historyIds.join(',') } : undefined),
 
   search: (q: string, filter?: string) =>
     get<{ items: YTItem[]; sections: { title: string; items: YTItem[] }[] }>('/search', { q, filter }),

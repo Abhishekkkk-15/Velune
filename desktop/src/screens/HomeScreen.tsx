@@ -8,6 +8,8 @@ import { usePlayerStore } from '../store/playerStore'
 import type { YTTrack } from '../api/client'
 import styles from './HomeScreen.module.css'
 
+import { useLibraryStore } from '../store/libraryStore'
+
 const pageVariants = {
   initial: { opacity: 0, y: 20 },
   animate: { opacity: 1, y: 0 },
@@ -15,9 +17,13 @@ const pageVariants = {
 }
 
 export default function HomeScreen() {
+  const { history } = useLibraryStore()
+  // Grab up to 3 recent track IDs to use for personalized recommendations
+  const historyIds = history.slice(0, 3).map(t => t.id)
+
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['home'],
-    queryFn: () => api.getHome(),
+    queryKey: ['home', historyIds.join(',')],
+    queryFn: () => api.getHome(historyIds),
     staleTime: 1000 * 60 * 10,
   })
   const { setQueue } = usePlayerStore()

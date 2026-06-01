@@ -33,8 +33,26 @@ app.use((req, res, next) => {
 
 const yt = new InnerTube()
 
+app.get('/api/auth/status', async (req, res) => {
+  try { res.json(await yt.getAuthStatus()) } catch (e: any) { res.status(500).json({ error: e.message }) }
+})
+
+app.post('/api/auth/start', async (req, res) => {
+  try { res.json(await yt.startAuth()) } catch (e: any) { res.status(500).json({ error: e.message }) }
+})
+
+app.post('/api/auth/signout', async (req, res) => {
+  try { await yt.signout(); res.json({ ok: true }) } catch (e: any) { res.status(500).json({ error: e.message }) }
+})
+
 app.get('/api/home', async (req, res) => {
-  try { res.json(await yt.getHomeFeed()) } catch (e: any) { res.status(500).json({ error: e.message }) }
+  try {
+    const { historyIds } = req.query
+    const ids = historyIds ? String(historyIds).split(',').filter(Boolean) : undefined
+    res.json(await yt.getHomeFeed(ids))
+  } catch (e: any) {
+    res.status(500).json({ error: e.message })
+  }
 })
 
 app.get('/api/search', async (req, res) => {

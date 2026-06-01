@@ -3,13 +3,14 @@ import { motion } from 'framer-motion'
 import { useParams, NavLink } from 'react-router-dom'
 import {
   Palette, Music2, FileText, HardDrive, Puzzle,
-  Globe, Check, ChevronRight, Info, Loader2
+  Globe, Check, ChevronRight, Info, Loader2, User
 } from 'lucide-react'
 import { useSettingsStore } from '../store/settingsStore'
 import { api } from '../api/client'
 import styles from './SettingsScreen.module.css'
 
 const SECTIONS = [
+  { id: 'account', label: 'Account', icon: User },
   { id: 'appearance', label: 'Appearance', icon: Palette },
   { id: 'player', label: 'Player', icon: Music2 },
   { id: 'content', label: 'Content', icon: Globe },
@@ -398,7 +399,91 @@ function AboutSection() {
   )
 }
 
+function AccountSection() {
+  const [status, setStatus] = useState<{ status: string, code?: string, url?: string } | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  const fetchStatus = async () => {
+    try {
+      const res = await api.getAuthStatus()
+      setStatus(res)
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  useEffect(() => {
+    fetchStatus()
+    const interval = setInterval(() => {
+      if (status?.status === 'pending') fetchStatus()
+    }, 5000)
+    return () => clearInterval(interval)
+  }, [status?.status])
+
+  const handleStartAuth = async () => {
+    setLoading(true)
+    try {
+      const res = await api.startAuth()
+      setStatus(res)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSignout = async () => {
+    setLoading(true)
+    try {
+      await api.signout()
+      await fetchStatus()
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className={styles.sectionContent}>
+      <div className={styles.aboutCard}>
+        <h3 className={styles.sectionHeader} style={{ marginTop: 0 }}>YouTube Music Account</h3>
+        <p className={styles.aboutDesc} style={{ textAlign: 'left', margin: '0 0 1rem 0' }}>
+          Sign in to access your personal playlists, liked songs, and receive real YouTube Music recommendations on your Home screen.
+          Logging in will <strong>not</strong> enable ads. Playback remains ad-free.
+        </p>
+
+        {status?.status === 'signed_in' && (
+          <div style={{ padding: '1rem', background: 'rgba(76, 175, 80, 0.1)', borderRadius: 8, border: '1px solid #4CAF50' }}>
+            <p style={{ margin: '0 0 1rem 0', color: '#4CAF50', fontWeight: 'bold' }}>✓ Signed In</p>
+            <button className={styles.dangerBtn} onClick={handleSignout} disabled={loading}>
+              {loading ? <Loader2 size={14} className={styles.spin} /> : 'Sign Out'}
+            </button>
+          </div>
+        )}
+
+        {status?.status === 'signed_out' && (
+          <button className={styles.saveBtn} onClick={handleStartAuth} disabled={loading}>
+            {loading ? <Loader2 size={14} className={styles.spin} /> : 'Sign In'}
+          </button>
+        )}
+
+        {status?.status === 'pending' && status.url && status.code && (
+          <div style={{ padding: '1rem', background: 'rgba(255, 255, 255, 0.05)', borderRadius: 8 }}>
+            <p style={{ margin: '0 0 0.5rem 0' }}>Please authenticate using your browser:</p>
+            <ol style={{ margin: '0 0 1rem 1rem', padding: 0 }}>
+              <li>Go to <a href={status.url} target="_blank" rel="noreferrer" style={{ color: 'var(--primary)' }}>{status.url}</a></li>
+              <li>Enter the code below</li>
+              <li>Return to Velune</li>
+            </ol>
+            <div style={{ padding: '0.5rem', background: '#000', fontSize: '1.5rem', textAlign: 'center', letterSpacing: '2px', borderRadius: 4 }}>
+              {status.code}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 const SECTION_MAP: Record<string, React.FC> = {
+  account: AccountSection,
   appearance: AppearanceSection,
   player: PlayerSection,
   content: ContentSection,

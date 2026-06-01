@@ -1,5 +1,8 @@
 import fetch from 'node-fetch'
-
+import { Innertube, Platform } from 'youtubei.js'
+import os from 'os'
+import fs from 'fs'
+import path from 'path'
 const YT_MUSIC_URL = 'https://music.youtube.com/youtubei/v1'
 
 const WEB_REMIX_CLIENT = {
@@ -222,12 +225,133 @@ function parseTwoRowItem(renderer: any): any | null {
   return null
 }
 
-export class InnerTube {
-  async getHomeFeed() {
-    const body = buildBody(WEB_REMIX_CLIENT, { browseId: 'FEmusic_home' })
-    const data = await innertubePost('browse', body)
+// Allow youtubei.js to evaluate deciphering scripts
+Platform.shim.eval = async (data) => new Function(data.output)()
 
+const OAUTH_FILE = path.join(os.homedir(), '.velune', 'oauth.json')
+
+export class InnerTube {
+  private yt: Innertube | null = null
+  private authCode: any = null
+
+  constructor() {
+    this.initYt()
+  }
+
+  private async initYt() {
+    if (this.yt) return
+    this.yt = await Innertube.create()
+
+    if (fs.existsSync(OAUTH_FILE)) {
+      try {
+        const cache = JSON.parse(fs.readFileSync(OAUTH_FILE, 'utf-8'))
+        await this.yt.session.signIn(cache)
+      } catch (e) {
+        console.error('Failed to restore OAuth session:', e)
+      }
+    }
+
+    this.yt.session.on('auth-pending', (data) => {
+      this.authCode = data
+    })
+
+    this.yt.session.on('auth', ({ credentials }) => {
+      this.authCode = null
+      try {
+        const dir = path.dirname(OAUTH_FILE)
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
+        fs.writeFileSync(OAUTH_FILE, JSON.stringify(credentials))
+      } catch (e) {
+        console.error('Failed to save OAuth session:', e)
+      }
+    })
+
+    this.yt.session.on('auth-error', (err) => {
+      console.error('OAuth Error:', err)
+      this.authCode = null
+    })
+  }
+
+  async getAuthStatus() {
+    await this.initYt()
+    if (this.yt?.session.logged_in) {
+      return { status: 'signed_in' }
+    }
+    if (this.authCode) {
+      return { status: 'pending', code: this.authCode.user_code, url: this.authCode.verification_url }
+    }
+    return { status: 'signed_out' }
+  }
+
+  async startAuth() {
+    await this.initYt()
+    if (this.yt?.session.logged_in) return
+    this.authCode = null
+    this.yt?.session.signIn().catch(console.error)
+    // Wait briefly for auth-pending to fire
+    await new Promise(r => setTimeout(r, 1500))
+    return this.getAuthStatus()
+  }
+
+  async signout() {
+    if (fs.existsSync(OAUTH_FILE)) fs.unlinkSync(OAUTH_FILE)
+    this.yt = await Innertube.create() // reset session
+    this.authCode = null
+  }
+
+  async post(endpoint: string, body: Record<string, any>) {
+    await this.initYt()
+    if (this.yt?.session.logged_in) {
+      try {
+        const res = await this.yt.session.http.fetch(`/youtubei/v1/${endpoint}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        })
+        if (res.ok) return await res.json()
+        console.warn(`Authenticated fetch failed for ${endpoint}: ${res.status}. Falling back.`)
+      } catch (err) {
+        console.warn(`Authenticated fetch encountered error for ${endpoint}:`, err, `. Falling back.`)
+      }
+    }
+    return innertubePost(endpoint, body)
+  }
+
+  async getHomeFeed(historyIds?: string[]) {
     const sections: any[] = []
+
+    if (historyIds && historyIds.length > 0) {
+      try {
+        // Build "Because you listened to..." using the most recent track
+        const latestId = historyIds[0]
+        const nextData = await this.getNext(latestId)
+        if (nextData.queue && nextData.queue.length > 0) {
+          const seedTrack = nextData.queue[0] // The seed is usually first
+          sections.push({
+            title: `Because you listened to ${seedTrack.title}`,
+            items: nextData.queue.slice(1, 13) // Next 12 tracks
+          })
+        }
+
+        // Build a "Mixed for you" from another recent track
+        if (historyIds.length > 1) {
+          const randomId = historyIds[Math.floor(Math.random() * Math.min(historyIds.length - 1, 4)) + 1]
+          const mixData = await this.getNext(randomId)
+          if (mixData.queue && mixData.queue.length > 0) {
+            sections.push({
+              title: `Mixed for you`,
+              items: mixData.queue.slice(1, 13)
+            })
+          }
+        }
+      } catch (e) {
+        console.error('Failed to build local personalized home:', e)
+      }
+    }
+
+    const body = buildBody(WEB_REMIX_CLIENT, { browseId: 'FEmusic_home' })
+    const data = await this.post('browse', body)
+
     const contents = data?.contents?.singleColumnBrowseResultsRenderer?.tabs?.[0]
       ?.tabRenderer?.content?.sectionListRenderer?.contents || []
 
@@ -270,7 +394,7 @@ export class InnerTube {
       query,
       params: filter ? filterParams[filter] : undefined,
     })
-    const data = await innertubePost('search', body)
+    const data = await this.post('search', body)
 
     const tabs = data?.contents?.tabbedSearchResultsRenderer?.tabs?.[0]
       ?.tabRenderer?.content?.sectionListRenderer?.contents || []
@@ -307,7 +431,7 @@ export class InnerTube {
 
   async getSearchSuggestions(query: string) {
     const body = buildBody(WEB_REMIX_CLIENT, { input: query })
-    const data = await innertubePost('music/get_search_suggestions', body)
+    const data = await this.post('music/get_search_suggestions', body)
 
     const suggestions: string[] = []
     const contents = data?.contents || []
@@ -323,7 +447,7 @@ export class InnerTube {
 
   async getArtist(browseId: string) {
     const body = buildBody(WEB_REMIX_CLIENT, { browseId })
-    const data = await innertubePost('browse', body)
+    const data = await this.post('browse', body)
 
     const header = data?.header?.musicImmersiveHeaderRenderer
       || data?.header?.musicVisualHeaderRenderer
@@ -373,7 +497,7 @@ export class InnerTube {
 
   async getAlbum(browseId: string) {
     const body = buildBody(WEB_REMIX_CLIENT, { browseId })
-    const data = await innertubePost('browse', body)
+    const data = await this.post('browse', body)
 
     const tabs = data?.contents?.twoColumnBrowseResultsRenderer?.tabs || []
     const header = tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents?.[0]?.musicResponsiveHeaderRenderer
@@ -396,7 +520,7 @@ export class InnerTube {
 
   async getPlaylist(browseId: string) {
     const body = buildBody(WEB_REMIX_CLIENT, { browseId: browseId.startsWith('VL') ? browseId : `VL${browseId}` })
-    const data = await innertubePost('browse', body)
+    const data = await this.post('browse', body)
 
     const twoCol = data?.contents?.twoColumnBrowseResultsRenderer
 
@@ -444,7 +568,7 @@ export class InnerTube {
 
   async getNext(videoId: string, playlistId?: string) {
     const body = buildBody(WEB_REMIX_CLIENT, { videoId, playlistId, isAudioOnly: true })
-    const data = await innertubePost('next', body)
+    const data = await this.post('next', body)
 
     const tabs = data?.contents?.singleColumnMusicWatchNextResultsRenderer?.tabbedRenderer
       ?.watchNextTabbedResultsRenderer?.tabs || []
@@ -472,7 +596,7 @@ export class InnerTube {
 
   async getMoodAndGenres() {
     const body = buildBody(WEB_REMIX_CLIENT, { browseId: 'FEmusic_moods_and_genres' })
-    const data = await innertubePost('browse', body)
+    const data = await this.post('browse', body)
 
     const contents = data?.contents?.singleColumnBrowseResultsRenderer?.tabs?.[0]
       ?.tabRenderer?.content?.sectionListRenderer?.contents || []
@@ -505,7 +629,7 @@ export class InnerTube {
       browseId: 'FEmusic_charts',
       params: 'Eg-KAQwIARAAGAAgACgAMABqChAKEAkQAxAEEAU%3D',
     })
-    const data = await innertubePost('browse', body)
+    const data = await this.post('browse', body)
 
     const sections: any[] = []
     const contents = data?.contents?.singleColumnBrowseResultsRenderer?.tabs?.[0]
