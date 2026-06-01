@@ -240,7 +240,7 @@ export class InnerTube {
         const items = (carousel.contents || []).map((c: any) =>
           c.musicTwoRowItemRenderer ? parseTwoRowItem(c.musicTwoRowItemRenderer)
             : c.musicResponsiveListItemRenderer ? parseYTItem(c.musicResponsiveListItemRenderer)
-            : null
+              : null
         ).filter(Boolean)
         if (items.length > 0) sections.push({ title, items })
       }
@@ -287,7 +287,7 @@ export class InnerTube {
         const sectionItems = (shelf.contents || []).map((c: any) =>
           c.musicResponsiveListItemRenderer ? parseYTItem(c.musicResponsiveListItemRenderer)
             : c.musicTwoRowItemRenderer ? parseTwoRowItem(c.musicTwoRowItemRenderer)
-            : null
+              : null
         ).filter(Boolean)
         items.push(...sectionItems)
         if (!filter) sections.push({ title: sectionTitle, items: sectionItems })
@@ -421,7 +421,7 @@ export class InnerTube {
     // Songs
     const secondaryContents = twoCol?.secondaryContents?.sectionListRenderer?.contents || []
     let contents: any[] = []
-    
+
     for (const section of secondaryContents) {
       const shelf = section.musicPlaylistShelfRenderer || section.musicShelfRenderer
       if (shelf?.contents?.length) {
@@ -521,7 +521,7 @@ export class InnerTube {
         const items = (shelf.contents || []).map((c: any) =>
           c.musicResponsiveListItemRenderer ? parseYTItem(c.musicResponsiveListItemRenderer)
             : c.musicTwoRowItemRenderer ? parseTwoRowItem(c.musicTwoRowItemRenderer)
-            : null
+              : null
         ).filter(Boolean)
         if (items.length) sections.push({ title, items })
       }

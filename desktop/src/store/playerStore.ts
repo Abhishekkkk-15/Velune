@@ -75,7 +75,7 @@ export const usePlayerStore = create<PlayerState>()(
       setCurrentTrack: (track) => set({ currentTrack: track, streamUrl: null, progress: 0, isLoading: true }),
       setQueue: (tracks, index = 0) => {
         const track = tracks[index]
-        set({ queue: tracks, queueIndex: index, currentTrack: track, streamUrl: null, progress: 0, isLoading: true })
+        set({ queue: tracks, queueIndex: index, currentTrack: track, streamUrl: null, progress: 0, isLoading: true, isPlaying: true })
       },
       addToQueue: (track) => set(s => ({ queue: [...s.queue, track] })),
       removeFromQueue: (index) => set(s => {
@@ -104,15 +104,15 @@ export const usePlayerStore = create<PlayerState>()(
             ? Math.floor(Math.random() * queue.length)
             : (queueIndex + 1) % queue.length
           const track = queue[next]
-          set({ queueIndex: next, currentTrack: track, streamUrl: null, progress: 0, isLoading: true })
+          set({ queueIndex: next, currentTrack: track, streamUrl: null, progress: 0, isLoading: true, isPlaying: true })
         } else if (shuffle) {
           const next = Math.floor(Math.random() * queue.length)
           const track = queue[next]
-          set({ queueIndex: next, currentTrack: track, streamUrl: null, progress: 0, isLoading: true })
+          set({ queueIndex: next, currentTrack: track, streamUrl: null, progress: 0, isLoading: true, isPlaying: true })
         } else if (queueIndex < queue.length - 1) {
           const next = queueIndex + 1
           const track = queue[next]
-          set({ queueIndex: next, currentTrack: track, streamUrl: null, progress: 0, isLoading: true })
+          set({ queueIndex: next, currentTrack: track, streamUrl: null, progress: 0, isLoading: true, isPlaying: true })
         } else {
           set({ isPlaying: false, progress: 0 })
         }
@@ -125,13 +125,13 @@ export const usePlayerStore = create<PlayerState>()(
         }
         const prev = Math.max(queueIndex - 1, 0)
         const track = queue[prev]
-        set({ queueIndex: prev, currentTrack: track, streamUrl: null, progress: 0, isLoading: true })
+        set({ queueIndex: prev, currentTrack: track, streamUrl: null, progress: 0, isLoading: true, isPlaying: true })
       },
       playAt: (index) => {
         const { queue } = get()
         const track = queue[index]
         if (!track) return
-        set({ queueIndex: index, currentTrack: track, streamUrl: null, progress: 0, isLoading: true })
+        set({ queueIndex: index, currentTrack: track, streamUrl: null, progress: 0, isLoading: true, isPlaying: true })
       },
       setIsPlaying: (v) => set({ isPlaying: v }),
       setProgress: (v) => set({ progress: v }),
