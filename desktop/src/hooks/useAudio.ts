@@ -23,6 +23,9 @@ export function useAudio() {
     if (!audioRef.current) {
       audioRef.current = new Audio()
       audioRef.current.preload = 'auto'
+      // crossOrigin='anonymous' is required for MediaElementAudioSourceNode when
+      // the audio src is a cross-origin CDN URL (googlevideo.com). YouTube CDN
+      // returns Access-Control-Allow-Origin: * which satisfies this requirement.
       audioRef.current.crossOrigin = 'anonymous'
       audioEngine.element = audioRef.current
       audioEngine.connectElement(audioRef.current)
@@ -137,6 +140,12 @@ export function useAudio() {
       .then(({ url }) => setStreamUrl(url))
       .catch(() => setIsLoading(false))
     addToHistory(currentTrack)
+
+    // Eagerly warm the server-side resolveStreamInfo cache for the next track
+    // so info.download() returns instantly (from cache) when the queue advances.
+    const { queue, queueIndex } = usePlayerStore.getState()
+    const nextTrack = queue[queueIndex + 1]
+    if (nextTrack) api.prefetchStream(nextTrack.id)
   }, [currentTrack?.id])
 
   useEffect(() => {
@@ -151,8 +160,14 @@ export function useAudio() {
   useEffect(() => {
     const audio = audioRef.current
     if (!audio || !streamUrl) return
-    if (isPlaying) audio.play().catch(() => {})
-    else audio.pause()
+    if (isPlaying) {
+      // Resume AudioContext first — browsers suspend it until a user gesture.
+      // Without this the audio loads but produces no output.
+      audioEngine.context?.resume().catch(() => {})
+      audio.play().catch(() => {})
+    } else {
+      audio.pause()
+    }
 
     if (window.electron?.setThumbarButtons) {
       window.electron.setThumbarButtons(isPlaying)

@@ -19,7 +19,8 @@ export async function getYoutube(): Promise<Innertube> {
 }
 
 // ─── Stream URL Cache (URL-level, short TTL) ──────────────────────────────────
-const MEM_CACHE = new Map<string, { url: string; expires: number }>()
+interface CacheEntry { url: string; audioOnly: boolean; expires: number }
+const MEM_CACHE = new Map<string, CacheEntry>()
 const DISK_CACHE_DIR = path.join(os.homedir(), '.velune', 'cache', 'streams')
 const DISK_CACHE_TTL_MS = 4 * 60 * 60 * 1000
 
@@ -33,24 +34,24 @@ function getDiskCachePath(videoId: string) {
   return path.join(DISK_CACHE_DIR, `${videoId}.json`)
 }
 
-function readDiskCache(videoId: string): string | null {
+function readDiskCache(videoId: string): { url: string; audioOnly: boolean } | null {
   try {
     const p = getDiskCachePath(videoId)
     if (!fs.existsSync(p)) return null
-    const { url, expires } = JSON.parse(fs.readFileSync(p, 'utf-8'))
-    if (Date.now() > expires) {
+    const parsed = JSON.parse(fs.readFileSync(p, 'utf-8'))
+    if (Date.now() > parsed.expires) {
       fs.unlinkSync(p)
       return null
     }
-    return url
+    return { url: parsed.url, audioOnly: parsed.audioOnly ?? false }
   } catch { return null }
 }
 
-function writeDiskCache(videoId: string, url: string) {
+function writeDiskCache(videoId: string, url: string, audioOnly: boolean) {
   try {
     ensureCacheDir()
     const expires = Date.now() + DISK_CACHE_TTL_MS
-    fs.writeFileSync(getDiskCachePath(videoId), JSON.stringify({ url, expires }))
+    fs.writeFileSync(getDiskCachePath(videoId), JSON.stringify({ url, audioOnly, expires }))
   } catch {}
 }
 
@@ -68,8 +69,78 @@ export function clearStreamCache(): void {
     }
     MEM_CACHE.clear()
   } catch {}
-  // Also clear the audio cache
   clearAudioCache()
+}
+
+/**
+ * Evicts a single video's resolved URL from both the memory and disk caches.
+ * Call this when the CDN URL returns 403/410 (expired) so the next request
+ * forces a fresh decipher pass.
+ */
+export function invalidateStreamCache(videoId: string): void {
+  MEM_CACHE.delete(videoId)
+  STREAM_INFO_CACHE.delete(videoId)
+  try {
+    const p = getDiskCachePath(videoId)
+    if (fs.existsSync(p)) fs.unlinkSync(p)
+  } catch {}
+}
+
+// ─── Stream Info Cache (holds youtubei info object + metadata, memory-only) ───
+interface StreamInfoEntry {
+  info: any
+  contentLength: number
+  mimeType: string
+  expires: number
+}
+const STREAM_INFO_CACHE = new Map<string, StreamInfoEntry>()
+const INFO_TTL_MS = 5 * 60 * 1000
+
+/**
+ * Resolves and caches the youtubei VideoInfo object plus audio metadata
+ * (content-length, mime-type) needed to serve proper HTTP range responses.
+ * Kept memory-only because the info object isn't serialisable.
+ */
+export async function resolveStreamInfo(videoId: string): Promise<{
+  info: any; contentLength: number; mimeType: string
+}> {
+  const now = Date.now()
+  const cached = STREAM_INFO_CACHE.get(videoId)
+  if (cached && cached.expires > now) {
+    return { info: cached.info, contentLength: cached.contentLength, mimeType: cached.mimeType }
+  }
+
+  const youtube = await getYoutube()
+  const safeChoose = (info: any, opts: any) => {
+    try { return info.chooseFormat(opts) } catch { return null }
+  }
+  const CLIENTS = ['IOS', 'ANDROID', 'WEB'] as const
+  const errors: string[] = []
+
+  for (const client of CLIENTS) {
+    try {
+      const info = await youtube.getInfo(videoId, { client })
+
+      const fmt =
+        safeChoose(info, { itag: 141 }) ??   // AAC 256 kbps
+        safeChoose(info, { itag: 140 }) ??   // AAC 128 kbps
+        safeChoose(info, { type: 'audio', quality: 'best' })
+
+      if (!fmt) { errors.push(`${client}: no audio format`); continue }
+
+      const contentLength = Number(fmt.content_length ?? 0)
+      const mimeType = String(fmt.mime_type ?? 'audio/mp4')
+
+      STREAM_INFO_CACHE.set(videoId, { info, contentLength, mimeType, expires: now + INFO_TTL_MS })
+      console.log(`[Stream] ${videoId} info via ${client} (${mimeType}, ${contentLength}b)`)
+      return { info, contentLength, mimeType }
+    } catch (err: any) {
+      errors.push(`${client}: ${err.message}`)
+      console.warn(`[Stream] ${client} getInfo failed for ${videoId}: ${err.message}`)
+    }
+  }
+
+  throw new Error(`resolveStreamInfo failed for ${videoId}: ${errors.join(' | ')}`)
 }
 
 export function getCacheStats(): { count: number; sizeBytes: number } {
@@ -84,39 +155,209 @@ export function getCacheStats(): { count: number; sizeBytes: number } {
   } catch { return { count: 0, sizeBytes: 0 } }
 }
 
-export async function resolveStreamUrl(videoId: string): Promise<string> {
+export async function resolveStreamUrl(videoId: string): Promise<{ url: string; audioOnly: boolean }> {
   const now = Date.now()
 
   const memEntry = MEM_CACHE.get(videoId)
-  if (memEntry && memEntry.expires > now) return memEntry.url
+  if (memEntry && memEntry.expires > now) return { url: memEntry.url, audioOnly: memEntry.audioOnly }
 
-  const diskUrl = readDiskCache(videoId)
-  if (diskUrl) {
-    MEM_CACHE.set(videoId, { url: diskUrl, expires: now + 5 * 60 * 1000 })
-    return diskUrl
+  const diskEntry = readDiskCache(videoId)
+  if (diskEntry) {
+    MEM_CACHE.set(videoId, { ...diskEntry, expires: now + 5 * 60 * 1000 })
+    return diskEntry
   }
 
-  try {
-    const youtube = await getYoutube()
-    const info = await youtube.getInfo(videoId, { client: 'ANDROID' })
-    const format = info.chooseFormat({ itag: 18 })
-
-    if (!format) throw new Error('Itag 18 format not found')
-
-    const url = await format.decipher(youtube.session.player)
-    if (!url) throw new Error('Failed to decipher format URL')
-
-    MEM_CACHE.set(videoId, { url, expires: now + 5 * 60 * 1000 })
-    writeDiskCache(videoId, url)
-    return url
-  } catch (err: any) {
-    throw new Error(`Stream resolution failed for ${videoId}: ${err.message}`)
+  // chooseFormat() throws in youtubei.js v17 when no format matches — wrap every
+  // call individually so we can fall through to the next option gracefully.
+  const safeChoose = (info: any, opts: any) => {
+    try { return info.chooseFormat(opts) } catch { return null }
   }
+
+  // Try multiple clients — different clients expose different adaptive formats.
+  // IOS tends to have the most reliable audio-only streams.
+  const CLIENTS = ['IOS', 'ANDROID', 'WEB'] as const
+  const errors: string[] = []
+
+  const youtube = await getYoutube()
+
+  for (const client of CLIENTS) {
+    try {
+      const info = await youtube.getInfo(videoId, { client })
+
+      // ── Priority 1: audio-only AAC m4a (no ffmpeg needed) ─────────────────
+      const audioOnly =
+        safeChoose(info, { itag: 141 }) ??   // AAC 256 kbps
+        safeChoose(info, { itag: 140 }) ??   // AAC 128 kbps
+        safeChoose(info, { type: 'audio', quality: 'best' })
+
+      if (audioOnly) {
+        const url = await audioOnly.decipher(youtube.session.player)
+        if (url) {
+          console.log(`[Stream] ${videoId} resolved via ${client} (audio-only)`)
+          MEM_CACHE.set(videoId, { url, audioOnly: true, expires: now + 5 * 60 * 1000 })
+          writeDiskCache(videoId, url, true)
+          return { url, audioOnly: true }
+        }
+      }
+
+      // ── Priority 2: muxed video+audio (ffmpeg will extract audio) ─────────
+      const muxed =
+        safeChoose(info, { itag: 18 }) ??
+        safeChoose(info, { type: 'videoandaudio', quality: 'best' })
+
+      if (muxed) {
+        const url = await muxed.decipher(youtube.session.player)
+        if (url) {
+          console.log(`[Stream] ${videoId} resolved via ${client} (muxed)`)
+          MEM_CACHE.set(videoId, { url, audioOnly: false, expires: now + 5 * 60 * 1000 })
+          writeDiskCache(videoId, url, false)
+          return { url, audioOnly: false }
+        }
+      }
+
+      errors.push(`${client}: no usable format found`)
+    } catch (err: any) {
+      errors.push(`${client}: ${err.message}`)
+      console.warn(`[Stream] Client ${client} failed for ${videoId}: ${err.message}`)
+    }
+  }
+
+  throw new Error(`Stream resolution failed for ${videoId}: ${errors.join(' | ')}`)
 }
 
-// ─── Audio Cache (pure .m4a, long TTL) ────────────────────────────────────────
+
+// ─── Live Audio Stream (uses youtubei.js download() — handles auth internally) ─
+
+/**
+ * Try to download and eagerly read the first chunk to detect CDN 403/non-2xx
+ * errors BEFORE the caller sends any HTTP response headers.
+ * Returns null if the CDN rejects the request, or a reassembled ReadableStream
+ * with the first chunk already prepended.
+ */
+async function tryDownload(
+  info: any,
+  opts: any
+): Promise<ReadableStream<Uint8Array> | null> {
+  let rawStream: ReadableStream<Uint8Array>
+  try {
+    rawStream = await info.download(opts)
+  } catch {
+    return null
+  }
+
+  const reader = rawStream.getReader()
+  let firstChunk: Uint8Array | undefined
+  try {
+    const { done, value } = await reader.read()
+    if (done || !value || value.length === 0) {
+      await reader.cancel()
+      return null
+    }
+    firstChunk = value
+  } catch {
+    // CDN returned non-2xx (403, 410, etc.) — stream errored on first read
+    try { await reader.cancel() } catch {}
+    return null
+  }
+
+  const chunk = firstChunk
+  return new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(chunk)
+    },
+    async pull(controller) {
+      try {
+        const { done, value } = await reader.read()
+        if (done) {
+          controller.close()
+        } else {
+          controller.enqueue(value)
+        }
+      } catch (e) {
+        controller.error(e)
+      }
+    },
+    cancel() {
+      reader.cancel().catch(() => {})
+    },
+  })
+}
+
+/**
+ * Returns a Web ReadableStream of audio for the given videoId.
+ *
+ * Eagerly reads the first chunk before returning so that CDN 403/non-2xx
+ * errors are detected BEFORE the proxy has sent any HTTP response headers —
+ * allowing the proxy to retry rather than sending a broken stream to the
+ * browser (which manifests as MEDIA_ELEMENT_ERROR: Format error).
+ *
+ * Valid youtubei.js download format values: 'mp4' | 'webm' | 'any'.
+ * 'm4a' is NOT valid and causes download() to throw on every client.
+ */
+export async function streamAudio(
+  videoId: string,
+  range?: { start: number; end: number }
+): Promise<ReadableStream<Uint8Array>> {
+  const mp4Opts: any  = { type: 'audio', quality: 'best', format: 'mp4' }
+  const anyOpts: any  = { type: 'audio', quality: 'best' }
+  if (range) { mp4Opts.range = range; anyOpts.range = range }
+
+  // ── Attempt 1: cached VideoInfo, force mp4 ────────────────────────────────
+  const { info } = await resolveStreamInfo(videoId)
+  const s1 = await tryDownload(info, mp4Opts)
+  if (s1) {
+    console.log('[Stream] audio stream validated for', videoId, range ? `range:${range.start}-${range.end}` : 'full', '(cached/mp4)')
+    return s1
+  }
+
+  // ── Attempt 2: cached VideoInfo, any format ───────────────────────────────
+  const s2 = await tryDownload(info, anyOpts)
+  if (s2) {
+    console.log('[Stream] audio stream validated for', videoId, '(cached/any)')
+    return s2
+  }
+
+  // ── CDN rejected both — evict and retry fresh with each client ────────────
+  STREAM_INFO_CACHE.delete(videoId)
+  console.warn(`[Stream] CDN rejected cached stream for ${videoId}, retrying with fresh clients`)
+
+  const youtube = await getYoutube()
+  const safeChoose = (i: any, o: any) => { try { return i.chooseFormat(o) } catch { return null } }
+
+  for (const client of ['ANDROID', 'WEB', 'IOS'] as const) {
+    try {
+      const freshInfo = await youtube.getInfo(videoId, { client })
+
+      // Update STREAM_INFO_CACHE with the fresh info
+      const fmt =
+        safeChoose(freshInfo, { itag: 141 }) ??
+        safeChoose(freshInfo, { itag: 140 }) ??
+        safeChoose(freshInfo, { type: 'audio', quality: 'best' })
+      if (fmt) {
+        STREAM_INFO_CACHE.set(videoId, {
+          info: freshInfo,
+          contentLength: Number(fmt.content_length ?? 0),
+          mimeType: String(fmt.mime_type ?? 'audio/mp4'),
+          expires: Date.now() + INFO_TTL_MS,
+        })
+      }
+
+      const s3 = await tryDownload(freshInfo, mp4Opts) ?? await tryDownload(freshInfo, anyOpts)
+      if (s3) {
+        console.log(`[Stream] audio stream validated for ${videoId} via fresh ${client}`)
+        return s3
+      }
+      console.warn(`[Stream] ${client} also got CDN 403 for ${videoId}`)
+    } catch (e: any) {
+      console.warn(`[Stream] ${client} getInfo failed for ${videoId}: ${e.message}`)
+    }
+  }
+
+  throw new Error(`All stream attempts (3 clients × 2 formats) failed for ${videoId}`)
+}
+
+// ─── Audio Cache (pure audio, long TTL) ───────────────────────────────────────
 const AUDIO_CACHE_DIR = path.join(os.homedir(), '.velune', 'cache', 'audio')
-// Map from videoId -> promise resolving to the cached .m4a path
 const activeExtractions = new Map<string, Promise<string>>()
 
 function ensureAudioCacheDir() {
@@ -140,76 +381,99 @@ function clearAudioCache(): void {
 }
 
 /**
- * Ensures a pure audio .m4a file exists in the audio cache for the given videoId.
- * If not cached, downloads the muxed Itag 18 stream and losslessly extracts the
- * audio track via ffmpeg. Multiple concurrent callers for the same videoId will
- * share the same download promise.
+ * Ensures a pure audio file exists in the audio cache for the given videoId.
+ *
+ * - If an audio-only format is available (itag 140/141), it is downloaded
+ *   directly — no ffmpeg required.
+ * - If only a muxed format is available, the video is downloaded and ffmpeg
+ *   is used to losslessly extract the audio track.
+ *
  * Returns the absolute path to the cached .m4a file.
  */
 export async function ensureAudioCached(videoId: string): Promise<string> {
   ensureAudioCacheDir()
   const audioPath = getAudioCachePath(videoId)
 
-  // Already cached
   if (fs.existsSync(audioPath)) {
     return audioPath
   }
 
-  // Deduplicate concurrent extraction requests for the same track
   const existing = activeExtractions.get(videoId)
   if (existing) return existing
 
   const extractionPromise = (async () => {
-    const tmpMp4 = audioPath + '.tmp.mp4'
-    const tmpM4a = audioPath + '.tmp.m4a'
+    const tmpFile = audioPath + '.tmp'
 
     try {
-      // 1. Resolve the muxed stream URL (Itag 18)
-      const url = await resolveStreamUrl(videoId)
+      const { url, audioOnly } = await resolveStreamUrl(videoId)
 
-      // 2. Download the muxed mp4 to a temp file
-      console.log(`[Audio Cache] Downloading muxed stream for ${videoId}...`)
-      const res = await fetch(url, {
-        headers: { 'Referer': 'https://www.youtube.com/' }
-      })
-      if (!res.ok) throw new Error(`Fetch failed: ${res.status} ${res.statusText}`)
-
-      await new Promise<void>((resolve, reject) => {
-        const out = fs.createWriteStream(tmpMp4)
-        res.body.pipe(out)
-        out.on('finish', resolve)
-        out.on('error', reject)
-        res.body.on('error', reject)
-      })
-
-      console.log(`[Audio Cache] Extracting audio for ${videoId}...`)
-
-      // 3. Use ffmpeg to losslessly extract the audio track to .m4a
-      await new Promise<void>((resolve, reject) => {
-        const ffmpeg = spawn('ffmpeg', [
-          '-y',
-          '-i', tmpMp4,
-          '-vn',            // no video
-          '-acodec', 'copy', // copy audio codec (lossless, instant)
-          tmpM4a
-        ])
-
-        ffmpeg.stderr.on('data', () => {}) // suppress ffmpeg output
-        ffmpeg.on('close', (code) => {
-          if (code === 0) resolve()
-          else reject(new Error(`ffmpeg exited with code ${code}`))
+      if (audioOnly) {
+        // ── Direct download (audio-only stream, no ffmpeg) ──────────────────
+        console.log(`[Audio Cache] Downloading audio-only stream for ${videoId}...`)
+        const res = await fetch(url, {
+          headers: { 'Referer': 'https://www.youtube.com/' }
         })
-        ffmpeg.on('error', reject)
-      })
+        if (!res.ok) throw new Error(`Fetch failed: ${res.status} ${res.statusText}`)
 
-      // 4. Atomic rename to final path
-      fs.renameSync(tmpM4a, audioPath)
-      console.log(`[Audio Cache] Cached audio for ${videoId} at ${audioPath}`)
+        await new Promise<void>((resolve, reject) => {
+          const out = fs.createWriteStream(tmpFile)
+          res.body.pipe(out)
+          out.on('finish', resolve)
+          out.on('error', reject)
+          res.body.on('error', reject)
+        })
+
+        fs.renameSync(tmpFile, audioPath)
+        console.log(`[Audio Cache] Cached audio-only for ${videoId}`)
+      } else {
+        // ── Muxed download + ffmpeg extraction ──────────────────────────────
+        const tmpMp4 = audioPath + '.tmp.mp4'
+        const tmpM4a = audioPath + '.tmp.m4a'
+
+        try {
+          console.log(`[Audio Cache] Downloading muxed stream for ${videoId}...`)
+          const res = await fetch(url, {
+            headers: { 'Referer': 'https://www.youtube.com/' }
+          })
+          if (!res.ok) throw new Error(`Fetch failed: ${res.status} ${res.statusText}`)
+
+          await new Promise<void>((resolve, reject) => {
+            const out = fs.createWriteStream(tmpMp4)
+            res.body.pipe(out)
+            out.on('finish', resolve)
+            out.on('error', reject)
+            res.body.on('error', reject)
+          })
+
+          console.log(`[Audio Cache] Extracting audio via ffmpeg for ${videoId}...`)
+
+          await new Promise<void>((resolve, reject) => {
+            const ffmpeg = spawn('ffmpeg', [
+              '-y',
+              '-i', tmpMp4,
+              '-vn',
+              '-acodec', 'copy',
+              tmpM4a
+            ])
+            ffmpeg.stderr.on('data', () => {})
+            ffmpeg.on('close', (code) => {
+              if (code === 0) resolve()
+              else reject(new Error(`ffmpeg exited with code ${code}`))
+            })
+            ffmpeg.on('error', (err) => reject(new Error(`ffmpeg not found or failed: ${err.message}`)))
+          })
+
+          fs.renameSync(tmpM4a, audioPath)
+          console.log(`[Audio Cache] Cached muxed-extracted audio for ${videoId}`)
+        } finally {
+          try { if (fs.existsSync(tmpMp4)) fs.unlinkSync(tmpMp4) } catch {}
+          try { if (fs.existsSync(tmpM4a)) fs.unlinkSync(tmpM4a) } catch {}
+        }
+      }
+
       return audioPath
     } finally {
-      // Clean up temp files
-      try { if (fs.existsSync(tmpMp4)) fs.unlinkSync(tmpMp4) } catch {}
-      try { if (fs.existsSync(tmpM4a)) fs.unlinkSync(tmpM4a) } catch {}
+      try { if (fs.existsSync(tmpFile)) fs.unlinkSync(tmpFile) } catch {}
       activeExtractions.delete(videoId)
     }
   })()

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Play, MoreHorizontal, Heart, ListPlus, Plus, Download, CheckCircle, Loader2, Trash2 } from 'lucide-react'
+import { Play, MoreHorizontal, Heart, ListPlus, Plus, Download, CheckCircle, Loader2, FolderPlus } from 'lucide-react'
 import { usePlayerStore } from '../store/playerStore'
 import { useLibraryStore } from '../store/libraryStore'
 import { proxyImage, api } from '../api/client'
@@ -25,12 +25,19 @@ interface Props {
 export default function TrackItem({ track, index, queue, showAlbum, showArt = true, compact }: Props) {
   const [hovered, setHovered] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
-  const { setQueue, addToQueue, currentTrack, isPlaying } = usePlayerStore()
-  const { isLiked, likeSong, unlikeSong, playlists, addToPlaylist, setDownloadStatus, removeDownload, getDownloadStatus } = useLibraryStore()
+  const [newPlaylistMode, setNewPlaylistMode] = useState(false)
+  const [newPlaylistName, setNewPlaylistName] = useState('')
 
-  const isActive = currentTrack?.id === track.id
-  const liked = isLiked(track.id)
-  const dlStatus = getDownloadStatus(track.id)
+  const { setQueue, addToQueue, currentTrack, isPlaying } = usePlayerStore()
+  const {
+    isLiked, likeSong, unlikeSong,
+    playlists, addToPlaylist, createPlaylist,
+    setDownloadStatus, removeDownload, getDownloadStatus,
+  } = useLibraryStore()
+
+  const isActive  = currentTrack?.id === track.id
+  const liked     = isLiked(track.id)
+  const dlStatus  = getDownloadStatus(track.id)
   const thumbnail = proxyImage(track.thumbnail)
 
   const toTrack = (t: YTTrack) => ({
@@ -73,11 +80,25 @@ export default function TrackItem({ track, index, queue, showAlbum, showArt = tr
     }
   }
 
+  const closeMenu = () => {
+    setMenuOpen(false)
+    setNewPlaylistMode(false)
+    setNewPlaylistName('')
+  }
+
+  const handleCreatePlaylist = () => {
+    const name = newPlaylistName.trim()
+    if (!name) return
+    const id = createPlaylist(name)
+    addToPlaylist(id, toTrack(track))
+    closeMenu()
+  }
+
   return (
     <div
       className={`${styles.item} ${isActive ? styles.active : ''} ${compact ? styles.compact : ''}`}
       onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => { setHovered(false); setMenuOpen(false) }}
+      onMouseLeave={() => { setHovered(false); closeMenu() }}
       onDoubleClick={handlePlay}
     >
       {showArt && (
@@ -144,24 +165,56 @@ export default function TrackItem({ track, index, queue, showAlbum, showArt = tr
         )}
 
         <div className={styles.duration}>{formatDuration(track.duration)}</div>
+
         {hovered && (
           <div className={styles.menuWrapper}>
             <button
               className={styles.actionBtn}
-              onClick={e => { e.stopPropagation(); setMenuOpen(!menuOpen) }}
+              onClick={e => { e.stopPropagation(); setMenuOpen(!menuOpen); setNewPlaylistMode(false) }}
             >
               <MoreHorizontal size={16} color="var(--on-surface-variant)" />
             </button>
+
             {menuOpen && (
-              <div className={styles.menu}>
-                <button onClick={() => addToQueue(toTrack(track))}>
+              <div className={styles.menu} onClick={e => e.stopPropagation()}>
+                <button onClick={() => { addToQueue(toTrack(track)); closeMenu() }}>
                   <ListPlus size={15} /> Add to queue
                 </button>
-                {playlists.map(p => (
-                  <button key={p.id} onClick={() => addToPlaylist(p.id, toTrack(track))}>
-                    <Plus size={15} /> Add to {p.name}
+
+                {playlists.length > 0 && (
+                  <>
+                    <div className={styles.menuDivider} />
+                    <div className={styles.menuLabel}>Add to playlist</div>
+                    {playlists.map(p => (
+                      <button key={p.id} onClick={() => { addToPlaylist(p.id, toTrack(track)); closeMenu() }}>
+                        <Plus size={15} /> {p.name}
+                      </button>
+                    ))}
+                  </>
+                )}
+
+                <div className={styles.menuDivider} />
+
+                {newPlaylistMode ? (
+                  <div className={styles.newPlaylistRow}>
+                    <input
+                      autoFocus
+                      className={styles.newPlaylistInput}
+                      placeholder="Playlist name…"
+                      value={newPlaylistName}
+                      onChange={e => setNewPlaylistName(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') handleCreatePlaylist()
+                        if (e.key === 'Escape') { setNewPlaylistMode(false); setNewPlaylistName('') }
+                      }}
+                    />
+                    <button className={styles.newPlaylistConfirm} onClick={handleCreatePlaylist}>✓</button>
+                  </div>
+                ) : (
+                  <button onClick={() => setNewPlaylistMode(true)}>
+                    <FolderPlus size={15} /> New playlist…
                   </button>
-                ))}
+                )}
               </div>
             )}
           </div>

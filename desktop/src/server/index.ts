@@ -20,7 +20,7 @@ try {
 import express from 'express'
 import cors from 'cors'
 import { InnerTube } from './innertube'
-import { ensureAudioCached, clearStreamCache, getCacheStats } from './streams'
+import { ensureAudioCached, resolveStreamUrl, resolveStreamInfo, streamAudio, invalidateStreamCache, clearStreamCache, getCacheStats } from './streams'
 import {
   startDownload, isDownloaded, getDownloadPath, getDownloadStatus,
   getAllDownloadedIds, getDownloadStats, deleteDownload, clearAllDownloads,
@@ -31,18 +31,10 @@ import { setDiscordActivity, clearDiscordActivity } from './discord'
 
 const app = express()
 const PORT = 3001
-const LOCALHOST_ORIGINS = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/
 
-app.use(cors({
-  origin: (origin, cb) => {
-    if (!origin || LOCALHOST_ORIGINS.test(origin)) {
-      cb(null, true)
-    } else {
-      cb(new Error('Not allowed by CORS'))
-    }
-  },
-  credentials: true,
-}))
+// API server is bound to 127.0.0.1 (loopback only) — not reachable from the
+// internet. Allow any origin so the Vite proxy and Replit preview work.
+app.use(cors({ origin: true, credentials: true }))
 app.use(express.json())
 app.use((req, res, next) => {
   console.log(`[API ${req.method}] ${req.url}`)
@@ -116,7 +108,13 @@ app.get('/api/stream', async (req, res) => {
       return res.json({ url: `/api/offline/${id}`, offline: true, size: stat.size })
     }
 
-    res.json({ url: `/api/stream/proxy/${id}`, offline: false })
+    // Return the direct CDN URL so the BROWSER fetches it using the user's IP.
+    // Replit's server IP is blocked by YouTube CDN (403), but the user's browser
+    // IP is not. The client audio element fetches CDN directly with crossOrigin
+    // set to 'anonymous' — YouTube CDN returns Access-Control-Allow-Origin: *,
+    // which satisfies MediaElementAudioSourceNode's CORS requirement.
+    const { url } = await resolveStreamUrl(id)
+    res.json({ url, offline: false })
   } catch (e: any) {
     console.error(`[API ERROR /api/stream] Video ID: ${req.query.videoId}`, e)
     res.status(500).json({ error: e.message })
@@ -126,17 +124,88 @@ app.get('/api/stream', async (req, res) => {
 app.get('/api/stream/proxy/:videoId', async (req, res) => {
   try {
     const { videoId } = req.params
-    // Ensure we have a pure audio .m4a cached (extracted from muxed Itag 18)
-    const audioPath = await ensureAudioCached(videoId)
-    // Express's sendFile handles Range requests, 206 Partial Content, and Content-Type automatically
-    res.setHeader('Content-Type', 'audio/mp4')
-    res.sendFile(audioPath)
+
+    // Parse Range header — browsers send this even for initial loads (bytes=0-)
+    let rangeStart = 0
+    let rangeEnd = 0
+    let hasRange = false
+    const rangeHeader = req.headers['range'] as string | undefined
+    if (rangeHeader) {
+      const m = rangeHeader.match(/bytes=(\d+)-(\d*)/)
+      if (m) {
+        rangeStart = Number(m[1])
+        rangeEnd = m[2] ? Number(m[2]) : 0  // 0 = open-ended ("to the end")
+        hasRange = true
+      }
+    }
+
+    // Resolve metadata (cached 5 min) — gives us Content-Length + MIME type.
+    const { contentLength, mimeType } = await resolveStreamInfo(videoId)
+
+    // Only restrict the download range when seeking beyond the start.
+    // For bytes=0- (browser initial load) we must NOT pass range:{start:0,end:0}
+    // to info.download() — youtubei.js turns that into &range=0-0 which fetches
+    // exactly 1 byte, causing MEDIA_ELEMENT_ERROR: Format error in the browser.
+    let downloadRange: { start: number; end: number } | undefined
+    if (hasRange && rangeStart > 0) {
+      const end = (rangeEnd > rangeStart) ? rangeEnd : (contentLength > 0 ? contentLength - 1 : 0)
+      downloadRange = { start: rangeStart, end }
+    }
+
+    // Stream via youtubei.js info.download() — carries session auth internally.
+    // Direct node-fetch of the CDN URL always 403s from Replit.
+    const webStream = await streamAudio(videoId, downloadRange)
+
+    const ct = mimeType.startsWith('audio/') ? mimeType : 'audio/mp4'
+    res.setHeader('Content-Type', ct)
+    res.setHeader('Accept-Ranges', 'bytes')
+
+    const declaredLength = contentLength > 0 ? contentLength : 0
+    if (hasRange && declaredLength > 0) {
+      const end = (rangeEnd > 0 && rangeEnd > rangeStart) ? rangeEnd : declaredLength - 1
+      res.setHeader('Content-Range', `bytes ${rangeStart}-${end}/${declaredLength}`)
+      // Omit Content-Length — a mismatch between declared and actual bytes causes
+      // the browser to truncate the stream and report MEDIA_ELEMENT_ERROR: Format error.
+      // Chunked transfer encoding is safer for proxied streams.
+      res.status(206)
+    }
+    // Do NOT set Content-Length for the body — use chunked transfer.
+    // If Content-Length is wrong (even by 1 byte) the browser truncates or
+    // stalls, producing a format error.  The audio element works fine without it.
+
+    console.log(`[Proxy] ${videoId} Range:${rangeHeader||'none'} status:${hasRange?206:200} mime:${ct} declaredLen:${declaredLength}`)
+
+    // Convert Web ReadableStream → Node.js Readable and pipe to the response
+    const { Readable } = await import('stream')
+    const nodeStream = Readable.fromWeb(webStream as any)
+    let bytesSent = 0
+    let firstChunkLogged = false
+    nodeStream.on('data', (chunk: Buffer) => {
+      bytesSent += chunk.length
+      if (!firstChunkLogged) {
+        firstChunkLogged = true
+        // Log first 16 bytes as hex — valid MP4 starts with box-size(4) + 'ftyp'(4)
+        const hex = chunk.slice(0, 16).toString('hex').match(/.{2}/g)?.join(' ')
+        const ascii = chunk.slice(4, 12).toString('ascii').replace(/[^\x20-\x7e]/g, '.')
+        console.log(`[Proxy] ${videoId} first bytes: ${hex} | ascii[4-12]: "${ascii}"`)
+      }
+    })
+    nodeStream.on('end', () => console.log(`[Proxy] ${videoId} stream ended, bytesSent:${bytesSent} declaredLen:${declaredLength}`))
+    nodeStream.on('error', (e) => console.error(`[Proxy] ${videoId} stream error:`, e.message))
+    nodeStream.pipe(res)
+    req.on('close', () => nodeStream.destroy())
   } catch (e: any) {
     console.error(`[Proxy Error]`, e)
-    if (!res.headersSent) {
-      res.status(500).json({ error: e.message })
-    }
+    if (!res.headersSent) res.status(500).json({ error: e.message })
   }
+})
+
+app.get('/api/stream/prefetch/:videoId', (req, res) => {
+  const { videoId } = req.params
+  resolveStreamInfo(videoId).catch((e) => {
+    console.warn(`[Prefetch] failed for ${videoId}: ${e.message}`)
+  })
+  res.json({ ok: true })
 })
 
 app.get('/api/offline/:videoId', (req, res) => {
