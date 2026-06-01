@@ -7,6 +7,15 @@ const api = {
   minimizeWindow: () => ipcRenderer.invoke('minimize-window'),
   maximizeWindow: () => ipcRenderer.invoke('maximize-window'),
   closeWindow: () => ipcRenderer.invoke('close-window'),
+
+  toggleMiniPlayer: () => ipcRenderer.invoke('toggle-mini-player'),
+  setThumbarButtons: (isPlaying: boolean) => ipcRenderer.send('set-thumbar-buttons', { isPlaying }),
+  onMediaCommand: (callback: (cmd: string) => void) => {
+    ipcRenderer.on('media-command', (_event, cmd) => callback(cmd))
+  },
+  offMediaCommand: () => {
+    ipcRenderer.removeAllListeners('media-command')
+  }
 }
 
 contextBridge.exposeInMainWorld('electron', api)

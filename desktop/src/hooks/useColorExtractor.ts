@@ -1,21 +1,7 @@
 import { useEffect } from 'react'
 import { usePlayerStore } from '../store/playerStore'
 import { proxyImage } from '../api/client'
-
-function hexToRgb(hex: string) {
-  const r = parseInt(hex.slice(1, 3), 16)
-  const g = parseInt(hex.slice(3, 5), 16)
-  const b = parseInt(hex.slice(5, 7), 16)
-  return { r, g, b }
-}
-
-function luminance({ r, g, b }: { r: number; g: number; b: number }) {
-  const toLinear = (c: number) => {
-    c /= 255
-    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
-  }
-  return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b)
-}
+import Color from 'color'
 
 export function useColorExtractor(imageUrl: string | undefined) {
   const setAccentColor = usePlayerStore(s => s.setAccentColor)
@@ -26,43 +12,54 @@ export function useColorExtractor(imageUrl: string | undefined) {
     const img = new Image()
     img.crossOrigin = 'anonymous'
     img.onload = () => {
-      const canvas = document.createElement('canvas')
-      const size = 50
-      canvas.width = size
-      canvas.height = size
-      const ctx = canvas.getContext('2d')
-      if (!ctx) return
-      ctx.drawImage(img, 0, 0, size, size)
-      const data = ctx.getImageData(0, 0, size, size).data
+      try {
+        const canvas = document.createElement('canvas')
+        const ctx = canvas.getContext('2d')
+        if (!ctx) return
 
-      const buckets: Record<string, { r: number; g: number; b: number; count: number }> = {}
-      for (let i = 0; i < data.length; i += 4) {
-        const r = Math.round(data[i] / 32) * 32
-        const g = Math.round(data[i + 1] / 32) * 32
-        const b = Math.round(data[i + 2] / 32) * 32
-        const key = `${r},${g},${b}`
-        if (!buckets[key]) buckets[key] = { r, g, b, count: 0 }
-        buckets[key].count++
+        canvas.width = img.width
+        canvas.height = img.height
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height).data
+        let r = 0, g = 0, b = 0, count = 0
+
+        // Sample every 10th pixel to save CPU
+        for (let i = 0; i < imageData.length; i += 40) {
+          r += imageData[i]
+          g += imageData[i + 1]
+          b += imageData[i + 2]
+          count++
+        }
+
+        r = Math.floor(r / count)
+        g = Math.floor(g / count)
+        b = Math.floor(b / count)
+
+        let finalColor = Color.rgb([r, g, b])
+        
+        // Ensure color isn't too dark or too bright for UI legibility
+        if (finalColor.isDark() && finalColor.luminosity() < 0.05) {
+          finalColor = finalColor.lighten(0.4)
+        }
+        if (finalColor.isLight() && finalColor.luminosity() > 0.8) {
+          finalColor = finalColor.darken(0.4)
+        }
+        
+        const hex = finalColor.hex()
+        setAccentColor(hex)
+
+        document.documentElement.style.setProperty('--primary', hex)
+        document.documentElement.style.setProperty('--primary-container', finalColor.darken(0.6).hex())
+        document.documentElement.style.setProperty('--primary-glow', finalColor.alpha(0.3).string())
+      } catch (err) {
+        console.error('[ColorExtractor] Failed to extract color:', err)
       }
-
-      const sorted = Object.values(buckets)
-        .filter(c => {
-          const lum = luminance(c)
-          const saturation = Math.max(c.r, c.g, c.b) - Math.min(c.r, c.g, c.b)
-          return saturation > 40 && lum > 0.05 && lum < 0.8
-        })
-        .sort((a, b) => b.count - a.count)
-
-      const pick = sorted[0] || { r: 237, g: 85, b: 100 }
-      const hex = `#${pick.r.toString(16).padStart(2, '0')}${pick.g.toString(16).padStart(2, '0')}${pick.b.toString(16).padStart(2, '0')}`
-      setAccentColor(hex)
-
-      document.documentElement.style.setProperty('--primary', hex)
-      const darkened = `color-mix(in srgb, ${hex} 30%, #000)`
-      document.documentElement.style.setProperty('--primary-container', darkened)
     }
-    img.onerror = () => {}
-    // Route through the local /api/image proxy to avoid 429 rate-limits from Google CDN
+    img.onerror = (err) => {
+      console.error('[ColorExtractor] Image load failed:', err)
+    }
+    // Route through the local /api/image proxy to avoid CORS issues
     img.src = proxyImage(imageUrl)
   }, [imageUrl])
 }

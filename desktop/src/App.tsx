@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import NavigationBar from './components/NavigationBar'
 import MiniPlayer from './components/MiniPlayer'
 import FullPlayer from './components/FullPlayer'
+import WidgetPlayer from './components/WidgetPlayer'
 import Queue from './components/Queue'
 import HomeScreen from './screens/HomeScreen'
 import SearchScreen from './screens/SearchScreen'
@@ -21,7 +22,7 @@ import { useScrobble } from './hooks/useScrobble'
 import { useColorExtractor } from './hooks/useColorExtractor'
 
 function AppInner() {
-  const { currentTrack, showFullPlayer, showQueue, isPlaying, progress, duration } = usePlayerStore()
+  const { currentTrack, showFullPlayer, showQueue, isPlaying, progress, duration, isWidgetMode } = usePlayerStore()
   const { accentColor } = useSettingsStore()
   useAudio()
   useScrobble(currentTrack, isPlaying, progress, duration)
@@ -32,6 +33,10 @@ function AppInner() {
   }, [accentColor])
 
   const location = useLocation()
+
+  if (isWidgetMode) {
+    return <WidgetPlayer />
+  }
 
   return (
     <div style={{

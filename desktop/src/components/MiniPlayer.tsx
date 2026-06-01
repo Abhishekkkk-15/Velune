@@ -66,6 +66,15 @@ export default function MiniPlayer() {
           <button className={styles.btn} onClick={toggleQueue}>
             <ListMusic size={18} color="var(--on-surface-variant)" />
           </button>
+          <button className={styles.btn} onClick={async (e) => {
+            e.stopPropagation()
+            if (window.electron?.toggleMiniPlayer) {
+              const isMini = await window.electron.toggleMiniPlayer()
+              usePlayerStore.getState().setIsWidgetMode(isMini)
+            }
+          }} title="Mini Player">
+            <div style={{ width: 14, height: 14, border: '2px solid var(--on-surface-variant)', borderRadius: 2 }} />
+          </button>
         </div>
       </div>
     </motion.div>

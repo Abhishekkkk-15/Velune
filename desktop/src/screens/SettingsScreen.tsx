@@ -13,6 +13,7 @@ const SECTIONS = [
   { id: 'account', label: 'Account', icon: User },
   { id: 'appearance', label: 'Appearance', icon: Palette },
   { id: 'player', label: 'Player', icon: Music2 },
+  { id: 'equalizer', label: 'Equalizer', icon: Music2 },
   { id: 'content', label: 'Content', icon: Globe },
   { id: 'storage', label: 'Storage', icon: HardDrive },
   { id: 'integrations', label: 'Integrations', icon: Puzzle },
@@ -170,6 +171,49 @@ function PlayerSection() {
           <option value="low">Low</option>
         </select>
       </SettingRow>
+    </div>
+  )
+}
+
+function EqualizerSection() {
+  const s = useSettingsStore()
+  const freqs = [31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000]
+  const labels = ['31', '62', '125', '250', '500', '1k', '2k', '4k', '8k', '16k']
+
+  return (
+    <div className={styles.sectionContent}>
+      <h3 className={styles.sectionHeader}>10-Band Equalizer</h3>
+      <div style={{ display: 'flex', gap: '1rem', justifyContent: 'space-between', marginTop: '2rem', height: '200px' }}>
+        {s.eqBands.map((gain, i) => (
+          <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--on-surface-variant)', marginBottom: '0.5rem' }}>{gain > 0 ? `+${gain}` : gain}</span>
+            <input
+              type="range"
+              min="-12"
+              max="12"
+              step="1"
+              value={gain}
+              onChange={e => s.setEqBand(i, Number(e.target.value))}
+              style={{
+                writingMode: 'bt-lr',
+                appearance: 'slider-vertical',
+                width: '100%',
+                height: '100%',
+                accentColor: 'var(--primary)'
+              }}
+            />
+            <span style={{ fontSize: '0.75rem', color: 'var(--on-surface-variant)', marginTop: '0.5rem' }}>{labels[i]}</span>
+          </div>
+        ))}
+      </div>
+      <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end' }}>
+        <button 
+          className={styles.saveBtn} 
+          onClick={() => s.eqBands.forEach((_, i) => s.setEqBand(i, 0))}
+        >
+          Reset Flat
+        </button>
+      </div>
     </div>
   )
 }
@@ -486,6 +530,7 @@ const SECTION_MAP: Record<string, React.FC> = {
   account: AccountSection,
   appearance: AppearanceSection,
   player: PlayerSection,
+  equalizer: EqualizerSection,
   content: ContentSection,
   storage: StorageSection,
   integrations: IntegrationsSection,

@@ -29,6 +29,7 @@ interface PlayerState {
   showFullPlayer: boolean
   showQueue: boolean
   accentColor: string
+  isWidgetMode: boolean
 
   setCurrentTrack: (track: Track) => void
   setQueue: (tracks: Track[], index?: number) => void
@@ -51,6 +52,7 @@ interface PlayerState {
   setShowFullPlayer: (v: boolean) => void
   toggleQueue: () => void
   setAccentColor: (c: string) => void
+  setIsWidgetMode: (v: boolean) => void
 }
 
 export const usePlayerStore = create<PlayerState>()(
@@ -71,6 +73,8 @@ export const usePlayerStore = create<PlayerState>()(
       showFullPlayer: false,
       showQueue: false,
       accentColor: '#ED5564',
+
+      isWidgetMode: false,
 
       setCurrentTrack: (track) => set({ currentTrack: track, streamUrl: null, progress: 0, isLoading: true }),
       setQueue: (tracks, index = 0) => {
@@ -149,6 +153,7 @@ export const usePlayerStore = create<PlayerState>()(
       setShowFullPlayer: (v) => set({ showFullPlayer: v }),
       toggleQueue: () => set(s => ({ showQueue: !s.showQueue })),
       setAccentColor: (c) => set({ accentColor: c }),
+      setIsWidgetMode: (v) => set({ isWidgetMode: v }),
     }),
     {
       name: 'velune-player',

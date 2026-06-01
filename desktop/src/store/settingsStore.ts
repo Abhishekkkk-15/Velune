@@ -31,6 +31,8 @@ interface SettingsState {
   discordEnabled: boolean
   discordToken: string
 
+  eqBands: number[]
+
   setDarkMode: (v: boolean) => void
   setPureBlack: (v: boolean) => void
   setAccentColor: (v: string) => void
@@ -53,6 +55,7 @@ interface SettingsState {
   setDiscordEnabled: (v: boolean) => void
   setDiscordToken: (v: string) => void
   setUseSystemFont: (v: boolean) => void
+  setEqBand: (index: number, gain: number) => void
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -87,6 +90,8 @@ export const useSettingsStore = create<SettingsState>()(
       discordEnabled: false,
       discordToken: '',
 
+      eqBands: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+
       setDarkMode: (v) => set({ darkMode: v }),
       setPureBlack: (v) => set({ pureBlack: v }),
       setAccentColor: (v) => set({ accentColor: v }),
@@ -109,6 +114,11 @@ export const useSettingsStore = create<SettingsState>()(
       setDiscordEnabled: (v) => set({ discordEnabled: v }),
       setDiscordToken: (v) => set({ discordToken: v }),
       setUseSystemFont: (v) => set({ useSystemFont: v }),
+      setEqBand: (index, gain) => set((s) => {
+        const next = [...s.eqBands]
+        next[index] = gain
+        return { eqBands: next }
+      }),
     }),
     { name: 'velune-settings' }
   )

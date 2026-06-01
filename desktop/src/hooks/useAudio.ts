@@ -23,11 +23,15 @@ export function useAudio() {
     if (!audioRef.current) {
       audioRef.current = new Audio()
       audioRef.current.preload = 'auto'
+      audioRef.current.crossOrigin = 'anonymous'
       audioEngine.element = audioRef.current
+      audioEngine.connectElement(audioRef.current)
     }
     if (!nextAudioRef.current) {
       nextAudioRef.current = new Audio()
       nextAudioRef.current.preload = 'auto'
+      nextAudioRef.current.crossOrigin = 'anonymous'
+      audioEngine.connectElement(nextAudioRef.current)
     }
   }, [])
 
@@ -149,7 +153,30 @@ export function useAudio() {
     if (!audio || !streamUrl) return
     if (isPlaying) audio.play().catch(() => {})
     else audio.pause()
+
+    if (window.electron?.setThumbarButtons) {
+      window.electron.setThumbarButtons(isPlaying)
+    }
   }, [isPlaying])
+
+  useEffect(() => {
+    if (window.electron?.onMediaCommand) {
+      window.electron.onMediaCommand((cmd) => {
+        if (cmd === 'playpause') {
+          setIsPlaying(!usePlayerStore.getState().isPlaying)
+        } else if (cmd === 'next') {
+          playNext()
+        } else if (cmd === 'prev') {
+          usePlayerStore.getState().playPrev()
+        }
+      })
+    }
+    return () => {
+      if (window.electron?.offMediaCommand) {
+        window.electron.offMediaCommand()
+      }
+    }
+  }, [playNext, setIsPlaying])
 
   useEffect(() => {
     const audio = audioRef.current
@@ -162,6 +189,12 @@ export function useAudio() {
     if (!audio) return
     audio.playbackRate = settings.playbackSpeed
   }, [settings.playbackSpeed])
+
+  useEffect(() => {
+    settings.eqBands.forEach((gain, index) => {
+      audioEngine.setEqBand(index, gain)
+    })
+  }, [settings.eqBands])
 
   useEffect(() => {
     if (!currentTrack) {

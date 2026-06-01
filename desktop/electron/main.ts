@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, shell, nativeTheme, session, utilityProcess, UtilityProcess } from 'electron'
+import { app, BrowserWindow, ipcMain, shell, nativeTheme, session, utilityProcess, UtilityProcess, nativeImage } from 'electron'
 import path from 'path'
 
 let mainWindow: BrowserWindow | null = null
@@ -124,3 +124,69 @@ ipcMain.handle('maximize-window', () => {
   else mainWindow?.maximize()
 })
 ipcMain.handle('close-window', () => mainWindow?.close())
+
+// --- Mini Player Mode ---
+let isMiniPlayer = false
+let normalBounds = { width: 1200, height: 780, x: 0, y: 0 }
+
+ipcMain.handle('toggle-mini-player', () => {
+  if (!mainWindow) return false
+
+  if (isMiniPlayer) {
+    mainWindow.setAlwaysOnTop(false)
+    mainWindow.setBounds(normalBounds)
+    mainWindow.setMinimumSize(900, 600)
+    isMiniPlayer = false
+  } else {
+    normalBounds = mainWindow.getBounds()
+    mainWindow.setMinimumSize(300, 300)
+    mainWindow.setBounds({ width: 300, height: 300 })
+    mainWindow.setAlwaysOnTop(true, 'floating')
+    isMiniPlayer = true
+  }
+  return isMiniPlayer
+})
+
+// --- Taskbar / Thumbar Buttons (Windows) ---
+ipcMain.on('set-thumbar-buttons', (event, { isPlaying }) => {
+  if (process.platform !== 'win32' || !mainWindow) return
+
+  mainWindow.setThumbarButtons([
+    {
+      tooltip: 'Previous',
+      icon: nativeImage.createFromPath(nativeTheme.themeSource === 'dark' ? path.join(__dirname, '..', 'assets', 'prev-dark.png') : path.join(__dirname, '..', 'assets', 'prev.png')),
+      click() { mainWindow?.webContents.send('media-command', 'prev') }
+    },
+    {
+      tooltip: isPlaying ? 'Pause' : 'Play',
+      icon: nativeImage.createFromPath(isPlaying ? path.join(__dirname, '..', 'assets', 'pause.png') : path.join(__dirname, '..', 'assets', 'play.png')),
+      click() { mainWindow?.webContents.send('media-command', 'playpause') }
+    },
+    {
+      tooltip: 'Next',
+      icon: nativeImage.createFromPath(nativeTheme.themeSource === 'dark' ? path.join(__dirname, '..', 'assets', 'next-dark.png') : path.join(__dirname, '..', 'assets', 'next.png')),
+      click() { mainWindow?.webContents.send('media-command', 'next') }
+    }
+  ])
+})
+
+// --- Global Media Shortcuts ---
+app.whenReady().then(() => {
+  import('electron').then(({ globalShortcut }) => {
+    globalShortcut.register('MediaPlayPause', () => {
+      mainWindow?.webContents.send('media-command', 'playpause')
+    })
+    globalShortcut.register('MediaNextTrack', () => {
+      mainWindow?.webContents.send('media-command', 'next')
+    })
+    globalShortcut.register('MediaPreviousTrack', () => {
+      mainWindow?.webContents.send('media-command', 'prev')
+    })
+  })
+})
+
+app.on('will-quit', () => {
+  import('electron').then(({ globalShortcut }) => {
+    globalShortcut.unregisterAll()
+  })
+})

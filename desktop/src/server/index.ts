@@ -202,6 +202,7 @@ app.get('/api/image', async (req, res) => {
     
     res.setHeader('Content-Type', imgRes.headers.get('content-type') || 'image/jpeg')
     res.setHeader('Cache-Control', 'public, max-age=86400')
+    res.setHeader('Access-Control-Allow-Origin', '*')
     imgRes.body.pipe(res)
   } catch (e: any) { 
     console.error('[Image proxy error]', e)

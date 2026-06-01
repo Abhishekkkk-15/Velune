@@ -10,6 +10,7 @@ interface Props {
 }
 
 export default function LyricsPanel({ track, progress }: Props) {
+  const containerRef = useRef<HTMLDivElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const [activeLine, setActiveLine] = useState(0)
 
@@ -23,6 +24,7 @@ export default function LyricsPanel({ track, progress }: Props) {
     staleTime: Infinity,
   })
 
+  // Determine active line based on progress
   useEffect(() => {
     if (!data?.synced || !data.lines.length) return
     let idx = 0
@@ -33,13 +35,42 @@ export default function LyricsPanel({ track, progress }: Props) {
     setActiveLine(idx)
   }, [progress, data])
 
+  const scrollState = useRef({ currentY: 0, targetY: 0 })
+
+  // requestAnimationFrame smooth scroll
   useEffect(() => {
-    if (!listRef.current) return
-    const el = listRef.current.querySelector(`[data-idx="${activeLine}"]`) as HTMLElement
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    if (!listRef.current || !containerRef.current) return
+
+    let animationFrameId: number
+
+    const updateScroll = () => {
+      if (listRef.current && containerRef.current) {
+        // Query the active element dynamically inside the loop to avoid dependency resets
+        const activeEl = listRef.current.querySelector(`.${styles.active}`) as HTMLElement
+        if (activeEl) {
+          const containerHeight = containerRef.current.clientHeight
+          const offsetTop = activeEl.offsetTop
+          const elHeight = activeEl.offsetHeight
+          
+          scrollState.current.targetY = -offsetTop + (containerHeight / 2) - (elHeight / 2)
+        }
+      }
+
+      // Smooth interpolation (lerp)
+      const { targetY, currentY } = scrollState.current
+      if (Math.abs(targetY - currentY) > 0.1) {
+        scrollState.current.currentY += (targetY - currentY) * 0.1
+        if (listRef.current) {
+          listRef.current.style.transform = `translateY(${scrollState.current.currentY}px)`
+        }
+      }
+
+      animationFrameId = requestAnimationFrame(updateScroll)
     }
-  }, [activeLine])
+
+    animationFrameId = requestAnimationFrame(updateScroll)
+    return () => cancelAnimationFrame(animationFrameId)
+  }, [])
 
   if (isLoading) {
     return (
@@ -58,8 +89,8 @@ export default function LyricsPanel({ track, progress }: Props) {
   }
 
   return (
-    <div className={styles.container} ref={listRef}>
-      <div className={styles.list}>
+    <div className={styles.container} ref={containerRef}>
+      <div className={styles.list} ref={listRef}>
         {data.lines.map((line, i) => (
           <div
             key={i}
