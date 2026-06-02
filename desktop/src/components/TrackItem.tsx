@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Play, MoreHorizontal, Heart, ListPlus, Plus, Download, CheckCircle, Loader2, FolderPlus, ListMusic, Disc3, User } from 'lucide-react'
+import { Play, MoreHorizontal, Heart, ListPlus, Plus, Download, CheckCircle, Loader2, FolderPlus, ListMusic, Disc3, User, Trash2 } from 'lucide-react'
 import { usePlayerStore } from '../store/playerStore'
 import { useLibraryStore } from '../store/libraryStore'
 import { proxyImage, api } from '../api/client'
@@ -21,9 +21,10 @@ interface Props {
   showAlbum?: boolean
   showArt?: boolean
   compact?: boolean
+  onRemove?: () => void
 }
 
-export default function TrackItem({ track, index, queue, queueContext, showAlbum, showArt = true, compact }: Props) {
+export default function TrackItem({ track, index, queue, queueContext, showAlbum, showArt = true, compact, onRemove }: Props) {
   const [hovered, setHovered] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [newPlaylistMode, setNewPlaylistMode] = useState(false)
@@ -193,6 +194,12 @@ export default function TrackItem({ track, index, queue, queueContext, showAlbum
                 <button onClick={() => { addToQueue(toTrack(track)); closeMenu() }}>
                   <ListPlus size={15} /> Add to queue
                 </button>
+
+                {onRemove && (
+                  <button onClick={(e) => { e.stopPropagation(); onRemove(); closeMenu() }} style={{ color: 'var(--error, #ef4444)' }}>
+                    <Trash2 size={15} /> Remove from playlist
+                  </button>
+                )}
 
                 {playlists.length > 0 && (
                   <>

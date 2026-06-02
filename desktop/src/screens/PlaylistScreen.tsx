@@ -1,7 +1,7 @@
-import { motion } from 'framer-motion'
-import { useParams } from 'react-router-dom'
+import { motion, Reorder, useDragControls } from 'framer-motion'
+import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Play, Shuffle, ListMusic, Heart, Download, Loader2, CheckCircle } from 'lucide-react'
+import { Play, Shuffle, ListMusic, Heart, Download, Loader2, CheckCircle, Pencil, Check, X, GripVertical, Trash2 } from 'lucide-react'
 import { api } from '../api/client'
 import TrackItem from '../components/TrackItem'
 import { TrackShimmerList } from '../components/ShimmerLoader'
@@ -9,7 +9,8 @@ import { usePlayerStore } from '../store/playerStore'
 import { useLibraryStore } from '../store/libraryStore'
 import { useSettingsStore } from '../store/settingsStore'
 import styles from './PlaylistScreen.module.css'
-import { useState } from 'react'
+import { useState, useRef } from 'react'
+import type { Track } from '../store/playerStore'
 
 const pageVariants = {
   initial: { opacity: 0, y: 20 },
@@ -17,12 +18,69 @@ const pageVariants = {
   exit: { opacity: 0, y: -10 },
 }
 
+// Drag handle sub-component
+function DragHandle({ controls }: { controls: ReturnType<typeof useDragControls> }) {
+  return (
+    <div
+      className={styles.dragHandle}
+      onPointerDown={(e) => controls.start(e)}
+    >
+      <GripVertical size={16} />
+    </div>
+  )
+}
+
+// Reorderable row wrapper
+function ReorderRow({
+  track,
+  songs,
+  data,
+  onRemove,
+}: {
+  track: Track
+  songs: Track[]
+  data: { id: string; title: string; thumbnail: string }
+  onRemove: () => void
+}) {
+  const controls = useDragControls()
+  return (
+    <Reorder.Item
+      value={track}
+      dragListener={false}
+      dragControls={controls}
+      className={styles.reorderItem}
+      whileDrag={{ scale: 1.02, opacity: 0.9, zIndex: 50, boxShadow: '0 8px 32px rgba(0,0,0,0.3)' }}
+      transition={{ duration: 0.15 }}
+    >
+      <DragHandle controls={controls} />
+      <div className={styles.reorderTrack}>
+        <TrackItem
+          track={{ ...track, thumbnail: track.thumbnail || data.thumbnail }}
+          queue={songs.map(t => ({ ...t, thumbnail: t.thumbnail || data.thumbnail }))}
+          queueContext={{ type: 'playlist', id: data.id, title: data.title }}
+          showArt
+          onRemove={onRemove}
+        />
+      </div>
+    </Reorder.Item>
+  )
+}
+
 export default function PlaylistScreen() {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
   const { setQueue } = usePlayerStore()
-  const { savePlaylist, unsavePlaylist, isPlaylistSaved, setDownloadStatus, getDownloadStatus, setDownloadMeta, playlists } = useLibraryStore()
+  const {
+    savePlaylist, unsavePlaylist, isPlaylistSaved,
+    setDownloadStatus, getDownloadStatus, setDownloadMeta,
+    playlists, removeFromPlaylist, reorderPlaylist, renamePlaylist, deletePlaylist,
+  } = useLibraryStore()
+
   const [downloadingAll, setDownloadingAll] = useState(false)
   const [allDone, setAllDone] = useState(false)
+  const [editingTitle, setEditingTitle] = useState(false)
+  const [titleDraft, setTitleDraft] = useState('')
+  const titleInputRef = useRef<HTMLInputElement>(null)
 
   const isLocal = id?.startsWith('pl_')
   const localPlaylist = isLocal ? playlists.find(p => p.id === id) : null
@@ -34,12 +92,17 @@ export default function PlaylistScreen() {
     enabled: !!id && !isLocal,
   })
 
-  const data = isLocal && localPlaylist ? {
-    id: localPlaylist.id,
-    title: localPlaylist.name,
-    thumbnail: localPlaylist.tracks[0]?.thumbnail || '',
-    songs: localPlaylist.tracks,
-  } : remoteData
+  // For local playlists, use a mutable local tracks state driven from store
+  const localTracks: Track[] = localPlaylist?.tracks || []
+
+  const data = isLocal && localPlaylist
+    ? {
+        id: localPlaylist.id,
+        title: localPlaylist.name,
+        thumbnail: localPlaylist.tracks[0]?.thumbnail || '',
+        songs: localPlaylist.tracks,
+      }
+    : remoteData
 
   const { maxCacheSize } = useSettingsStore()
 
@@ -61,7 +124,6 @@ export default function PlaylistScreen() {
         if (res.status === 'done') {
           setDownloadStatus(t.id, 'done')
         } else {
-          // Poll until done
           await new Promise<void>((resolve) => {
             const poll = setInterval(async () => {
               try {
@@ -102,6 +164,26 @@ export default function PlaylistScreen() {
     })), 0, { type: 'playlist', id: data.id, title: data.title })
   }
 
+  const startEditTitle = () => {
+    setTitleDraft(localPlaylist?.name || '')
+    setEditingTitle(true)
+    setTimeout(() => titleInputRef.current?.focus(), 50)
+  }
+
+  const commitTitle = () => {
+    const name = titleDraft.trim()
+    if (name && id) renamePlaylist(id, name)
+    setEditingTitle(false)
+  }
+
+  const handleDeletePlaylist = () => {
+    if (!id) return
+    if (window.confirm('Delete this playlist? This cannot be undone.')) {
+      deletePlaylist(id)
+      navigate('/library')
+    }
+  }
+
   return (
     <motion.div
       className={styles.page}
@@ -130,7 +212,34 @@ export default function PlaylistScreen() {
             </div>
             <div className={styles.info}>
               <div className={styles.label}>Playlist</div>
-              <h1 className={styles.title}>{data.title}</h1>
+
+              {/* Editable Title (local only) */}
+              {isLocal && editingTitle ? (
+                <div className={styles.titleEditRow}>
+                  <input
+                    ref={titleInputRef}
+                    className={styles.titleInput}
+                    value={titleDraft}
+                    onChange={e => setTitleDraft(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') commitTitle()
+                      if (e.key === 'Escape') setEditingTitle(false)
+                    }}
+                  />
+                  <button className={styles.titleEditBtn} onClick={commitTitle}><Check size={18} /></button>
+                  <button className={styles.titleEditBtn} onClick={() => setEditingTitle(false)}><X size={18} /></button>
+                </div>
+              ) : (
+                <div className={styles.titleRow}>
+                  <h1 className={styles.title}>{data.title}</h1>
+                  {isLocal && (
+                    <button className={styles.titleEditIcon} onClick={startEditTitle} title="Rename playlist">
+                      <Pencil size={18} />
+                    </button>
+                  )}
+                </div>
+              )}
+
               <div className={styles.meta}>{data.songs.length} songs</div>
               <div className={styles.actions}>
                 <button className={styles.playBtn} onClick={handlePlay}>
@@ -167,22 +276,53 @@ export default function PlaylistScreen() {
                     <Heart size={18} fill={isSaved ? "var(--primary)" : "transparent"} color={isSaved ? "var(--primary)" : "currentColor"} />
                   </button>
                 )}
+                {isLocal && (
+                  <button
+                    className={styles.shuffleBtn}
+                    onClick={handleDeletePlaylist}
+                    title="Delete playlist"
+                    style={{ color: 'var(--error, #ef4444)' }}
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                )}
               </div>
             </div>
           </div>
 
-          <div className={styles.tracks}>
-            {data.songs.map((track, i) => (
-              <TrackItem
-                key={`${track.id}-${i}`}
-                track={{ ...track, thumbnail: track.thumbnail || data.thumbnail }}
-                index={i}
-                queue={data.songs.map(t => ({ ...t, thumbnail: t.thumbnail || data.thumbnail }))}
-                queueContext={{ type: 'playlist', id: data.id, title: data.title }}
-                showArt
-              />
-            ))}
-          </div>
+          {/* Reorderable track list for local playlists */}
+          {isLocal ? (
+            <Reorder.Group
+              axis="y"
+              values={localTracks}
+              onReorder={(newOrder) => id && reorderPlaylist(id, newOrder)}
+              className={styles.tracks}
+              as="div"
+            >
+              {localTracks.map((track) => (
+                <ReorderRow
+                  key={track.id}
+                  track={track}
+                  songs={localTracks}
+                  data={{ id: data.id, title: data.title, thumbnail: data.thumbnail }}
+                  onRemove={() => id && removeFromPlaylist(id, track.id)}
+                />
+              ))}
+            </Reorder.Group>
+          ) : (
+            <div className={styles.tracks}>
+              {data.songs.map((track, i) => (
+                <TrackItem
+                  key={`${track.id}-${i}`}
+                  track={{ ...track, thumbnail: track.thumbnail || data.thumbnail }}
+                  index={i}
+                  queue={data.songs.map(t => ({ ...t, thumbnail: t.thumbnail || data.thumbnail }))}
+                  queueContext={{ type: 'playlist', id: data.id, title: data.title }}
+                  showArt
+                />
+              ))}
+            </div>
+          )}
         </>
       )}
     </motion.div>

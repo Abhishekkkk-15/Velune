@@ -96,5 +96,103 @@
 
 .tracks { padding: 8px 20px 32px; }
 
+/* Drag and drop */
+.reorderItem {
+  display: flex;
+  align-items: center;
+  border-radius: var(--radius-md);
+  position: relative;
+  user-select: none;
+  background: transparent;
+  transition: background 0.15s;
+}
+.reorderItem:hover {
+  background: var(--surface-container);
+}
+.reorderTrack {
+  flex: 1;
+  min-width: 0;
+}
+.dragHandle {
+  display: flex;
+  align-items: center;
+  padding: 0 4px 0 8px;
+  color: var(--on-surface-variant);
+  opacity: 0;
+  cursor: grab;
+  flex-shrink: 0;
+  touch-action: none;
+  transition: opacity 0.15s;
+}
+.reorderItem:hover .dragHandle {
+  opacity: 0.5;
+}
+.dragHandle:active {
+  cursor: grabbing;
+  opacity: 1;
+}
+
+/* Editable title */
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.titleEditIcon {
+  color: var(--on-surface-variant);
+  opacity: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  transition: opacity 0.15s, background 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+.titleRow:hover .titleEditIcon {
+  opacity: 1;
+}
+.titleEditIcon:hover {
+  background: var(--surface-container-high);
+  color: var(--on-surface);
+}
+.titleEditRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.titleInput {
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--on-surface);
+  background: var(--surface-container);
+  border: 2px solid var(--primary);
+  border-radius: var(--radius-md);
+  padding: 4px 12px;
+  font-family: inherit;
+  outline: none;
+  min-width: 0;
+  flex: 1;
+}
+.titleEditBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+  color: var(--on-surface);
+  border: 1px solid var(--outline-variant);
+  cursor: pointer;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+.titleEditBtn:hover { background: var(--surface-container-high); }
+
 @keyframes spin { to { transform: rotate(360deg); } }
 .spin { animation: spin 1s linear infinite; }

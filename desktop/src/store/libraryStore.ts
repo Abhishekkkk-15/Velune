@@ -33,6 +33,7 @@ interface LibraryState {
   addToPlaylist: (playlistId: string, track: Track) => void
   removeFromPlaylist: (playlistId: string, trackId: string) => void
   renamePlaylist: (id: string, name: string) => void
+  reorderPlaylist: (id: string, newOrder: Track[]) => void
 
   addToHistory: (track: Track) => void
   clearHistory: () => void
@@ -89,6 +90,9 @@ export const useLibraryStore = create<LibraryState>()(
       })),
       renamePlaylist: (id, name) => set(s => ({
         playlists: s.playlists.map(p => p.id === id ? { ...p, name } : p),
+      })),
+      reorderPlaylist: (id, newOrder) => set(s => ({
+        playlists: s.playlists.map(p => p.id === id ? { ...p, tracks: newOrder } : p),
       })),
 
       addToHistory: (track) => set(s => {
