@@ -9,6 +9,7 @@ export interface Track {
   thumbnail: string
   duration?: number
   explicit?: boolean
+  context?: { type: 'playlist' | 'album' | 'artist'; id: string; title: string }
 }
 
 type RepeatMode = 'off' | 'one' | 'all'
@@ -16,6 +17,7 @@ type RepeatMode = 'off' | 'one' | 'all'
 interface PlayerState {
   currentTrack: Track | null
   queue: Track[]
+  queueContext?: { type: 'playlist' | 'album' | 'artist'; id: string; title: string }
   queueIndex: number
   isPlaying: boolean
   progress: number
@@ -32,7 +34,7 @@ interface PlayerState {
   isWidgetMode: boolean
 
   setCurrentTrack: (track: Track) => void
-  setQueue: (tracks: Track[], index?: number) => void
+  setQueue: (tracks: Track[], index?: number, context?: { type: 'playlist' | 'album' | 'artist'; id: string; title: string }) => void
   addToQueue: (track: Track) => void
   removeFromQueue: (index: number) => void
   reorderQueue: (from: number, to: number) => void
@@ -76,10 +78,12 @@ export const usePlayerStore = create<PlayerState>()(
 
       isWidgetMode: false,
 
-      setCurrentTrack: (track) => set({ currentTrack: track, streamUrl: null, progress: 0, isLoading: true }),
-      setQueue: (tracks, index = 0) => {
-        const track = tracks[index]
-        set({ queue: tracks, queueIndex: index, currentTrack: track, streamUrl: null, progress: 0, isLoading: true, isPlaying: true })
+      setCurrentTrack: (track) => set({ currentTrack: track, progress: 0, streamUrl: null, isLoading: true }),
+      setQueue: (tracks, index = 0, context) => {
+        if (!tracks.length) return
+        const queuedTracks = context ? tracks.map(t => ({ ...t, context })) : tracks
+        const track = queuedTracks[index]
+        set({ queue: queuedTracks, queueIndex: index, currentTrack: track, streamUrl: null, progress: 0, isLoading: true, isPlaying: true, queueContext: context })
       },
       addToQueue: (track) => set(s => ({ queue: [...s.queue, track] })),
       removeFromQueue: (index) => set(s => {

@@ -259,3 +259,6 @@
 }
 .playlistCard:hover .deleteBtn { opacity: 1; }
 .deleteBtn:hover { background: var(--surface-bright); }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinIcon { animation: spin 1s linear infinite; }

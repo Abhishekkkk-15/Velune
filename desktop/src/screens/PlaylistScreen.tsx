@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
 import { useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Play, Shuffle, ListMusic, Heart, Download } from 'lucide-react'
+import { Play, Shuffle, ListMusic, Heart, Download, Loader2, CheckCircle } from 'lucide-react'
 import { api } from '../api/client'
 import TrackItem from '../components/TrackItem'
 import { TrackShimmerList } from '../components/ShimmerLoader'
@@ -9,6 +9,7 @@ import { usePlayerStore } from '../store/playerStore'
 import { useLibraryStore } from '../store/libraryStore'
 import { useSettingsStore } from '../store/settingsStore'
 import styles from './PlaylistScreen.module.css'
+import { useState } from 'react'
 
 const pageVariants = {
   initial: { opacity: 0, y: 20 },
@@ -19,8 +20,10 @@ const pageVariants = {
 export default function PlaylistScreen() {
   const { id } = useParams<{ id: string }>()
   const { setQueue } = usePlayerStore()
-  const { savePlaylist, unsavePlaylist, isPlaylistSaved } = useLibraryStore()
-  
+  const { savePlaylist, unsavePlaylist, isPlaylistSaved, setDownloadStatus, getDownloadStatus, setDownloadMeta } = useLibraryStore()
+  const [downloadingAll, setDownloadingAll] = useState(false)
+  const [allDone, setAllDone] = useState(false)
+
   const isSaved = isPlaylistSaved(id!)
   const { data, isLoading, error } = useQuery({
     queryKey: ['playlist', id],
@@ -30,11 +33,46 @@ export default function PlaylistScreen() {
 
   const { maxCacheSize } = useSettingsStore()
 
-  const handleDownloadAll = () => {
-    if (!data?.songs.length) return
-    data.songs.forEach(t => {
-      api.download(t.id, maxCacheSize)
-    })
+  const handleDownloadAll = async () => {
+    if (!data?.songs.length || downloadingAll || allDone) return
+    setDownloadingAll(true)
+    setAllDone(false)
+
+    const songs = data.songs
+    await Promise.allSettled(songs.map(async (t) => {
+      setDownloadStatus(t.id, 'downloading')
+      setDownloadMeta({
+        id: t.id, title: t.title, artists: t.artists,
+        album: t.album, thumbnail: t.thumbnail || data.thumbnail, duration: t.duration,
+        context: { type: 'playlist', id: data.id, title: data.title }
+      })
+      try {
+        const res = await api.downloadTrack(t.id)
+        if (res.status === 'done') {
+          setDownloadStatus(t.id, 'done')
+        } else {
+          // Poll until done
+          await new Promise<void>((resolve) => {
+            const poll = setInterval(async () => {
+              try {
+                const { status } = await api.getDownloadStatus(t.id)
+                if (status === 'done' || status === 'error') {
+                  clearInterval(poll)
+                  setDownloadStatus(t.id, status as any)
+                  resolve()
+                }
+              } catch { clearInterval(poll); resolve() }
+            }, 2000)
+          })
+        }
+      } catch {
+        setDownloadStatus(t.id, 'error')
+      }
+    }))
+
+    setDownloadingAll(false)
+    const allCompleted = songs.every(t => getDownloadStatus(t.id) === 'done')
+    setAllDone(allCompleted)
   }
 
   const handlePlay = () => {
@@ -42,7 +80,7 @@ export default function PlaylistScreen() {
     setQueue(data.songs.map(t => ({
       id: t.id, title: t.title, artists: t.artists,
       album: t.album, thumbnail: t.thumbnail || data.thumbnail, duration: t.duration,
-    })), 0)
+    })), 0, { type: 'playlist', id: data.id, title: data.title })
   }
 
   const handleShuffle = () => {
@@ -51,7 +89,7 @@ export default function PlaylistScreen() {
     setQueue(shuffled.map(t => ({
       id: t.id, title: t.title, artists: t.artists,
       album: t.album, thumbnail: t.thumbnail || data.thumbnail, duration: t.duration,
-    })), 0)
+    })), 0, { type: 'playlist', id: data.id, title: data.title })
   }
 
   return (
@@ -93,12 +131,22 @@ export default function PlaylistScreen() {
                   <Shuffle size={18} />
                   Shuffle
                 </button>
-                <button className={styles.shuffleBtn} onClick={handleDownloadAll} title="Download All">
-                  <Download size={18} />
-                  Download
+                <button
+                  className={styles.shuffleBtn}
+                  onClick={handleDownloadAll}
+                  title={allDone ? 'Downloaded' : downloadingAll ? 'Downloading…' : 'Download All'}
+                  disabled={downloadingAll || allDone}
+                  style={{ opacity: (downloadingAll || allDone) ? 0.75 : 1 }}
+                >
+                  {allDone
+                    ? <CheckCircle size={18} />
+                    : downloadingAll
+                      ? <Loader2 size={18} className={styles.spin} />
+                      : <Download size={18} />}
+                  {allDone ? 'Downloaded' : downloadingAll ? 'Downloading…' : 'Download'}
                 </button>
-                <button 
-                  className={styles.shuffleBtn} 
+                <button
+                  className={styles.shuffleBtn}
                   onClick={() => {
                     if (isSaved) unsavePlaylist(id!)
                     else savePlaylist({ id: id!, title: data.title, thumbnail: data.thumbnail })

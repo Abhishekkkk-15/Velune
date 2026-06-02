@@ -125,3 +125,6 @@
 .thIdx { width: 32px; text-align: center; }
 .thTitle { flex: 1; }
 .thDuration { min-width: 36px; text-align: right; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { animation: spin 1s linear infinite; }

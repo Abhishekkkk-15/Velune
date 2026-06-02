@@ -29,13 +29,15 @@ export default function SearchScreen() {
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState('')
   const [inputValue, setInputValue] = useState('')
+  const [debouncedInput, setDebouncedInput] = useState('')
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const sugDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const { setQueue } = usePlayerStore()
 
   const { data: suggestions } = useQuery({
-    queryKey: ['suggestions', inputValue],
-    queryFn: () => api.getSearchSuggestions(inputValue),
-    enabled: inputValue.length > 1 && !query,
+    queryKey: ['suggestions', debouncedInput],
+    queryFn: () => api.getSearchSuggestions(debouncedInput),
+    enabled: debouncedInput.length > 1 && !query,
     staleTime: 1000 * 30,
   })
 
@@ -48,10 +50,16 @@ export default function SearchScreen() {
 
   const handleInput = useCallback((v: string) => {
     setInputValue(v)
+    
+    if (sugDebounceRef.current) clearTimeout(sugDebounceRef.current)
+    sugDebounceRef.current = setTimeout(() => {
+      setDebouncedInput(v)
+    }, 150)
+
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => {
       setQuery(v)
-    }, 500)
+    }, 600)
   }, [])
 
   const handleSubmit = (e: React.FormEvent) => {

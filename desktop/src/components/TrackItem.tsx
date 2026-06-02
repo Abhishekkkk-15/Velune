@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Play, MoreHorizontal, Heart, ListPlus, Plus, Download, CheckCircle, Loader2, FolderPlus } from 'lucide-react'
+import { Play, MoreHorizontal, Heart, ListPlus, Plus, Download, CheckCircle, Loader2, FolderPlus, ListMusic, Disc3, User } from 'lucide-react'
 import { usePlayerStore } from '../store/playerStore'
 import { useLibraryStore } from '../store/libraryStore'
 import { proxyImage, api } from '../api/client'
@@ -14,7 +14,7 @@ function formatDuration(s?: number) {
 }
 
 interface Props {
-  track: YTTrack
+  track: YTTrack & { context?: { type: string; id: string; title: string } }
   index?: number
   queue?: YTTrack[]
   showAlbum?: boolean
@@ -32,7 +32,7 @@ export default function TrackItem({ track, index, queue, showAlbum, showArt = tr
   const {
     isLiked, likeSong, unlikeSong,
     playlists, addToPlaylist, createPlaylist,
-    setDownloadStatus, removeDownload, getDownloadStatus,
+    getDownloadStatus, setDownloadStatus, removeDownload, setDownloadMeta
   } = useLibraryStore()
 
   const isActive = currentTrack?.id === track.id
@@ -60,6 +60,7 @@ export default function TrackItem({ track, index, queue, showAlbum, showArt = tr
     }
     if (dlStatus === 'downloading') return
     setDownloadStatus(track.id, 'downloading')
+    setDownloadMeta(toTrack(track))
     try {
       const result = await api.downloadTrack(track.id)
       if (result.status === 'done') {
@@ -130,7 +131,18 @@ export default function TrackItem({ track, index, queue, showAlbum, showArt = tr
 
       <div className={styles.info}>
         <div className={`${styles.title} ${isActive ? styles.titleActive : ''}`}>{track.title}</div>
-        <div className={styles.artist}>{(track.artists || []).map(a => a.name).join(', ')}</div>
+        <div className={styles.artist}>
+          {(track.artists || []).map(a => a.name).join(', ')}
+          {track.context && (
+            <span className={styles.contextBadge} title={`From ${track.context.type}: ${track.context.title}`}>
+              <span className={styles.contextDot}>•</span>
+              {track.context.type === 'playlist' && <ListMusic size={10} />}
+              {track.context.type === 'album' && <Disc3 size={10} />}
+              {track.context.type === 'artist' && <User size={10} />}
+              {track.context.title}
+            </span>
+          )}
+        </div>
       </div>
 
       {showAlbum && (

@@ -1,15 +1,17 @@
 import { useState, useRef } from 'react'
 import { motion } from 'framer-motion'
-import { X, GripVertical } from 'lucide-react'
+import { X, GripVertical, ListMusic, Disc3, User } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { usePlayerStore } from '../store/playerStore'
 import { proxyImage } from '../api/client'
 import styles from './Queue.module.css'
 
 export default function Queue() {
-  const { queue, queueIndex, currentTrack, toggleQueue, playAt, removeFromQueue, reorderQueue } = usePlayerStore()
+  const { queue, queueContext, queueIndex, currentTrack, toggleQueue, playAt, removeFromQueue, reorderQueue } = usePlayerStore()
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [dragOver, setDragOver] = useState<number | null>(null)
   const dragNodeRef = useRef<number | null>(null)
+  const navigate = useNavigate()
 
   const safeQueue = queue || []
   const upNext = safeQueue.slice((queueIndex || 0) + 1)
@@ -43,7 +45,23 @@ export default function Queue() {
       transition={{ type: 'spring', stiffness: 300, damping: 35 }}
     >
       <div className={styles.header}>
-        <h2 className={styles.title}>Queue</h2>
+        <div className={styles.headerTitles}>
+          <h2 className={styles.title}>Queue</h2>
+          {queueContext && (
+            <div 
+              className={styles.contextLink}
+              onClick={() => {
+                navigate(`/${queueContext.type}/${queueContext.id}`)
+                toggleQueue()
+              }}
+            >
+              {queueContext.type === 'playlist' && <ListMusic size={12} />}
+              {queueContext.type === 'album' && <Disc3 size={12} />}
+              {queueContext.type === 'artist' && <User size={12} />}
+              Playing from {queueContext.title}
+            </div>
+          )}
+        </div>
         <button className={styles.closeBtn} onClick={toggleQueue}>
           <X size={20} />
         </button>

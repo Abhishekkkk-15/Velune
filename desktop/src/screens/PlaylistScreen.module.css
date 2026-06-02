@@ -95,3 +95,6 @@
 .shuffleBtn:hover { background: var(--surface-container-high); }
 
 .tracks { padding: 8px 20px 32px; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { animation: spin 1s linear infinite; }

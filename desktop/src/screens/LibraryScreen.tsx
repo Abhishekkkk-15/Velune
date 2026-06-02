@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { Plus, Heart, Music2, Disc3, User, ListMusic, Trash2 } from 'lucide-react'
+import { Plus, Heart, Music2, Disc3, User, ListMusic, Trash2, Download, HardDrive, Loader2, Play } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useLibraryStore } from '../store/libraryStore'
 import { usePlayerStore } from '../store/playerStore'
-import { proxyImage } from '../api/client'
+import { proxyImage, api } from '../api/client'
 import TrackItem from '../components/TrackItem'
 import ChipsRow from '../components/ChipsRow'
 import styles from './LibraryScreen.module.css'
@@ -14,6 +14,7 @@ const TABS = [
   { label: 'Artists', value: 'artists' },
   { label: 'Albums', value: 'albums' },
   { label: 'Playlists', value: 'playlists' },
+  { label: 'Downloads', value: 'downloads' },
 ]
 
 const pageVariants = {
@@ -26,9 +27,34 @@ export default function LibraryScreen() {
   const [tab, setTab] = useState('songs')
   const [showNewPlaylist, setShowNewPlaylist] = useState(false)
   const [newName, setNewName] = useState('')
-  const { likedSongs, playlists, savedPlaylists, history, createPlaylist, deletePlaylist, unsavePlaylist } = useLibraryStore()
+  const [downloadIds, setDownloadIds] = useState<string[]>([])
+  const [downloadsLoading, setDownloadsLoading] = useState(false)
+  const [expandedDownloadGroup, setExpandedDownloadGroup] = useState<string | null>(null)
+  const { likedSongs, playlists, savedPlaylists, history, createPlaylist, deletePlaylist, unsavePlaylist, downloads, removeDownload, downloadedMeta } = useLibraryStore()
   const { setQueue } = usePlayerStore()
   const navigate = useNavigate()
+
+  useEffect(() => {
+    if (tab !== 'downloads') return
+    setDownloadsLoading(true)
+    api.getDownloads().then(({ ids }) => {
+      setDownloadIds(ids)
+      setDownloadsLoading(false)
+    }).catch(() => setDownloadsLoading(false))
+  }, [tab])
+
+  const downloadedTracks = useMemo(() => {
+    const allTracks = [...likedSongs, ...history]
+    const seen = new Set<string>()
+    return downloadIds.map(id => {
+      if (downloadedMeta[id]) {
+        if (!seen.has(id)) { seen.add(id); return downloadedMeta[id] }
+      }
+      const found = allTracks.find(t => t.id === id)
+      if (found && !seen.has(id)) { seen.add(id); return found }
+      return { id, title: id, artists: [], thumbnail: '' }
+    }).filter(Boolean)
+  }, [downloadIds, downloadedMeta, likedSongs, history])
 
   const handleCreatePlaylist = () => {
     if (!newName.trim()) return
@@ -38,9 +64,26 @@ export default function LibraryScreen() {
   }
 
   const playLiked = () => {
-    if (!likedSongs.length) return
-    setQueue(likedSongs, 0)
+    if (likedSongs.length > 0) setQueue(likedSongs, 0)
   }
+
+  const downloadGroups = useMemo(() => {
+    const groups: Record<string, { type: string, id: string, title: string, thumbnail: string, tracks: any[] }> = {}
+    const individuals: any[] = []
+    for (const t of downloadedTracks) {
+      if (t.context) {
+        if (!groups[t.context.id]) {
+          groups[t.context.id] = { ...t.context, thumbnail: t.thumbnail, tracks: [] }
+        }
+        groups[t.context.id].tracks.push(t)
+      } else {
+        individuals.push(t)
+      }
+    }
+    return { groups: Object.values(groups), individuals }
+  }, [downloadedTracks])
+
+  const expandedGroupData = expandedDownloadGroup ? downloadGroups.groups.find(g => g.id === expandedDownloadGroup) : null
 
   const topArtists = (() => {
     const counts: Record<string, { name: string; count: number; thumbnail: string; id?: string }> = {}
@@ -253,6 +296,83 @@ export default function LibraryScreen() {
                 </div>
               ))}
             </div>
+          )}
+        </div>
+      )}
+      {tab === 'downloads' && (
+        <div className={styles.content}>
+          {downloadsLoading ? (
+            <div className={styles.empty}>
+              <Loader2 size={40} className={styles.spinIcon} color="var(--primary)" />
+              <p>Loading downloads…</p>
+            </div>
+          ) : downloadedTracks.length === 0 ? (
+            <div className={styles.empty}>
+              <HardDrive size={56} color="var(--outline)" />
+              <p>No downloads yet</p>
+              <span>Download songs from album or artist pages to listen offline</span>
+            </div>
+          ) : expandedGroupData ? (
+            <>
+              <div className={styles.playAllRow} style={{ justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <button 
+                    style={{ background: 'transparent', border: 'none', color: 'var(--on-surface)', cursor: 'pointer', display: 'flex', padding: '8px' }}
+                    onClick={() => setExpandedDownloadGroup(null)}
+                  >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                  </button>
+                  <h2 style={{ fontSize: '20px', fontWeight: 'bold', margin: 0 }}>{expandedGroupData.title}</h2>
+                </div>
+                <button className={styles.playAllBtn} onClick={() => setQueue(expandedGroupData.tracks, 0, { type: expandedGroupData.type as any, id: expandedGroupData.id, title: expandedGroupData.title })}>
+                  <Play size={16} fill="var(--primary)" color="var(--primary)" />
+                  Play All ({expandedGroupData.tracks.length})
+                </button>
+              </div>
+              {expandedGroupData.tracks.map((track, i) => (
+                <TrackItem key={track.id} track={track as any} index={i} queue={expandedGroupData.tracks as any} showArt />
+              ))}
+            </>
+          ) : (
+            <>
+              <div className={styles.playAllRow}>
+                <button className={styles.playAllBtn} onClick={() => setQueue(downloadedTracks, 0)}>
+                  <Download size={16} color="var(--primary)" />
+                  Play All Downloads ({downloadedTracks.length})
+                </button>
+              </div>
+
+              {downloadGroups.groups.length > 0 && (
+                <div className={styles.playlistGrid} style={{ marginBottom: '24px' }}>
+                  {downloadGroups.groups.map(g => (
+                    <div key={g.id} className={styles.playlistCard} onClick={() => setExpandedDownloadGroup(g.id)}>
+                      <div className={styles.playlistArt}>
+                        {g.thumbnail ? <img src={proxyImage(g.thumbnail)} alt="" /> : <Disc3 size={32} color="var(--on-surface-variant)" />}
+                      </div>
+                      <div className={styles.playlistInfo}>
+                        <div className={styles.playlistName}>{g.title}</div>
+                        <div className={styles.playlistCount}>Downloaded {g.type} • {g.tracks.length} songs</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {downloadGroups.individuals.length > 0 && (
+                <>
+                  {downloadGroups.groups.length > 0 && <h3 style={{ fontSize: '14px', color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '12px', paddingLeft: '12px' }}>Individual Songs</h3>}
+                  {downloadGroups.individuals.map((track, i) => (
+                    <TrackItem
+                      key={track.id}
+                      track={track as any}
+                      index={i}
+                      queue={downloadGroups.individuals as any}
+                      showArt
+                    />
+                  ))}
+                </>
+              )}
+            </>
           )}
         </div>
       )}

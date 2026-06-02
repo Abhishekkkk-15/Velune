@@ -18,6 +18,7 @@ interface LibraryState {
   playlists: PlaylistLocal[]
   history: Track[]
   downloads: Record<string, DownloadStatus>
+  downloadedMeta: Record<string, Track>
 
   likeSong: (track: Track) => void
   unlikeSong: (id: string) => void
@@ -39,6 +40,7 @@ interface LibraryState {
   setDownloadStatus: (videoId: string, status: DownloadStatus) => void
   removeDownload: (videoId: string) => void
   getDownloadStatus: (videoId: string) => DownloadStatus | undefined
+  setDownloadMeta: (track: Track) => void
 }
 
 export const useLibraryStore = create<LibraryState>()(
@@ -49,6 +51,7 @@ export const useLibraryStore = create<LibraryState>()(
       playlists: [],
       history: [],
       downloads: {},
+      downloadedMeta: {},
 
       likeSong: (track) => set(s => {
         if (s.likedSongs.find(t => t.id === track.id)) return s
@@ -99,10 +102,15 @@ export const useLibraryStore = create<LibraryState>()(
       })),
       removeDownload: (videoId) => set(s => {
         const d = { ...s.downloads }
+        const m = { ...s.downloadedMeta }
         delete d[videoId]
-        return { downloads: d }
+        delete m[videoId]
+        return { downloads: d, downloadedMeta: m }
       }),
       getDownloadStatus: (videoId) => get().downloads[videoId],
+      setDownloadMeta: (track) => set(s => ({
+        downloadedMeta: { ...s.downloadedMeta, [track.id]: track }
+      })),
     }),
     { name: 'velune-library' }
   )
