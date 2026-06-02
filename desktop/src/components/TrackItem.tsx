@@ -17,12 +17,13 @@ interface Props {
   track: YTTrack & { context?: { type: string; id: string; title: string } }
   index?: number
   queue?: YTTrack[]
+  queueContext?: { type: 'playlist' | 'album' | 'artist'; id: string; title: string }
   showAlbum?: boolean
   showArt?: boolean
   compact?: boolean
 }
 
-export default function TrackItem({ track, index, queue, showAlbum, showArt = true, compact }: Props) {
+export default function TrackItem({ track, index, queue, queueContext, showAlbum, showArt = true, compact }: Props) {
   const [hovered, setHovered] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [newPlaylistMode, setNewPlaylistMode] = useState(false)
@@ -48,7 +49,7 @@ export default function TrackItem({ track, index, queue, showAlbum, showArt = tr
   const handlePlay = () => {
     const tracks = queue || [track]
     const idx = queue ? queue.findIndex(t => t.id === track.id) : 0
-    setQueue(tracks.map(toTrack), idx >= 0 ? idx : 0)
+    setQueue(tracks.map(toTrack), idx >= 0 ? idx : 0, queueContext || track.context as any)
   }
 
   const handleDownload = async (e: React.MouseEvent) => {

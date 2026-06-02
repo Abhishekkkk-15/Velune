@@ -166,6 +166,7 @@ export default function PlaylistScreen() {
                 track={{ ...track, thumbnail: track.thumbnail || data.thumbnail }}
                 index={i}
                 queue={data.songs.map(t => ({ ...t, thumbnail: t.thumbnail || data.thumbnail }))}
+                queueContext={{ type: 'playlist', id: data.id, title: data.title }}
                 showArt
               />
             ))}
