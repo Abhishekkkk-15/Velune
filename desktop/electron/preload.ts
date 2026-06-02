@@ -8,7 +8,8 @@ const api = {
   maximizeWindow: () => ipcRenderer.invoke('maximize-window'),
   closeWindow: () => ipcRenderer.invoke('close-window'),
 
-  toggleMiniPlayer: () => ipcRenderer.invoke('toggle-mini-player'),
+  toggleMiniPlayer: (theme?: string) => ipcRenderer.invoke('toggle-mini-player', theme),
+  resizeWidget: (width: number, height: number) => ipcRenderer.invoke('resize-widget', width, height),
   setThumbarButtons: (isPlaying: boolean) => ipcRenderer.send('set-thumbar-buttons', { isPlaying }),
   onMediaCommand: (callback: (cmd: string) => void) => {
     ipcRenderer.on('media-command', (_event, cmd) => callback(cmd))
