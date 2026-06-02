@@ -9,7 +9,7 @@ async function getClient(clientId?: string): Promise<any> {
   if (connected && rpc && id === currentClientId) return rpc
 
   if (rpc) {
-    try { await rpc.destroy() } catch {}
+    try { await rpc.destroy() } catch { }
     rpc = null
     connected = false
   }
@@ -57,11 +57,11 @@ export async function setDiscordActivity(track: {
         { label: 'Listen on YouTube Music', url: 'https://music.youtube.com/' },
       ],
     })
-  } catch {}
+  } catch { }
 }
 
 export async function clearDiscordActivity(clientId?: string) {
   const client = await getClient(clientId)
   if (!client) return
-  try { await client.clearActivity() } catch {}
+  try { await client.clearActivity() } catch { }
 }

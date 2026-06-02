@@ -6,7 +6,7 @@ try {
   const logFile = path.join(os.homedir(), '.velune', 'server_crash.log')
   if (!fs.existsSync(path.dirname(logFile))) fs.mkdirSync(path.dirname(logFile), { recursive: true })
   fs.writeFileSync(logFile, `Server starting at ${new Date().toISOString()}\n`, { flag: 'a' })
-  
+
   process.on('uncaughtException', (err) => {
     fs.writeFileSync(logFile, `[Uncaught] ${err.stack || err}\n`, { flag: 'a' })
   })
@@ -136,7 +136,7 @@ app.get('/api/stream', async (req, res) => {
       duration = resolved.duration
     } catch {
       // Warm the youtubei cache as fallback
-      resolveStreamUrl(id).catch(() => {})
+      resolveStreamUrl(id).catch(() => { })
     }
     res.json({ url: `/api/stream/proxy/${id}`, offline: false, duration })
   } catch (e: any) {
@@ -274,7 +274,7 @@ app.post('/api/download', async (req, res) => {
       }
     }
 
-    startDownload(videoId).catch(() => {})
+    startDownload(videoId).catch(() => { })
     res.json({ ok: true, status: 'downloading' })
   } catch (e: any) { res.status(500).json({ error: e.message }) }
 })
@@ -308,19 +308,19 @@ app.get('/api/image', async (req, res) => {
     const allowed = ['yt3.ggpht.com', 'lh3.googleusercontent.com', 'i.ytimg.com', 'ytimg.com', 'yt3.googleusercontent.com', 'googleusercontent.com']
     const parsed = new URL(url)
     if (!allowed.some(h => parsed.hostname.endsWith(h))) return res.status(403).json({ error: 'Disallowed host' })
-    
+
     const imgRes = await nodeFetch(url, {
       headers: { 'User-Agent': 'Mozilla/5.0', 'Referer': 'https://music.youtube.com/' },
     })
     if (!imgRes.ok) return res.status(imgRes.status).end()
-    
+
     res.setHeader('Content-Type', imgRes.headers.get('content-type') || 'image/jpeg')
     res.setHeader('Cache-Control', 'public, max-age=86400')
     res.setHeader('Access-Control-Allow-Origin', '*')
     imgRes.body.pipe(res)
-  } catch (e: any) { 
+  } catch (e: any) {
     console.error('[Image proxy error]', e)
-    res.status(500).json({ error: e.message }) 
+    res.status(500).json({ error: e.message })
   }
 })
 

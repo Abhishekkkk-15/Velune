@@ -11,7 +11,8 @@ export default function Queue() {
   const [dragOver, setDragOver] = useState<number | null>(null)
   const dragNodeRef = useRef<number | null>(null)
 
-  const upNext = queue.slice(queueIndex + 1)
+  const safeQueue = queue || []
+  const upNext = safeQueue.slice((queueIndex || 0) + 1)
 
   const handleDragStart = (e: React.DragEvent, realIndex: number) => {
     dragNodeRef.current = realIndex
@@ -87,8 +88,8 @@ export default function Queue() {
                     <img src={proxyImage(track.thumbnail)} alt="" className={styles.thumb} />
                   )}
                   <div className={styles.info}>
-                    <div className={styles.trackTitle}>{track.title}</div>
-                    <div className={styles.trackArtist}>{track.artists.map(a => a.name).join(', ')}</div>
+                    <div className={styles.trackTitle}>{track?.title}</div>
+                    <div className={styles.trackArtist}>{(track?.artists || []).map(a => a.name).join(', ')}</div>
                   </div>
                   <button className={styles.removeBtn} onClick={() => removeFromQueue(realIndex)}>
                     <X size={14} />
@@ -100,7 +101,7 @@ export default function Queue() {
         </div>
       )}
 
-      {queue.length === 0 && (
+      {safeQueue.length === 0 && (
         <div className={styles.empty}>Queue is empty</div>
       )}
     </motion.div>

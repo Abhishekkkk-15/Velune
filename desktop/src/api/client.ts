@@ -219,7 +219,7 @@ export const api = {
     get<{ count: number; sizeBytes: number }>("/cache/stats"),
 
   clearCache: () => post("/cache/clear", {}),
-  
+
   enforceCacheLimit: (maxBytes: number) => post("/cache/enforce", { maxBytes }),
 
   downloadTrack: (videoId: string) =>
