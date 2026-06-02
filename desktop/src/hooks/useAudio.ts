@@ -249,7 +249,7 @@ export function useAudio() {
     if (settings.discordEnabled && isPlaying) {
       api.discordActivity({
         title: currentTrack.title,
-        artist: currentTrack.artists.map(a => a.name).join(', '),
+        artist: (currentTrack.artists || []).map(a => a.name).join(', '),
         album: currentTrack.album,
         thumbnail: currentTrack.thumbnail,
         startTimestamp: Date.now(),

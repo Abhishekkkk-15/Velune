@@ -18,7 +18,7 @@ export default function LyricsPanel({ track, progress }: Props) {
     queryKey: ['lyrics', track.id],
     queryFn: () => api.getLyrics(
       track.title,
-      track.artists.map(a => a.name).join(', '),
+      (track.artists || []).map(a => a.name).join(', '),
       track.duration
     ),
     staleTime: Infinity,

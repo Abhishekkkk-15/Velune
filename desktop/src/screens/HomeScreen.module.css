@@ -29,10 +29,12 @@
   font-weight: 500;
   cursor: pointer;
   font-family: inherit;
-  transition: background 0.15s;
+  font-family: inherit;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.15s;
   border: 1px solid var(--outline-variant);
 }
-.shuffleBtn:hover { background: var(--surface-container-high); }
+.shuffleBtn:hover { background: var(--surface-container-high); transform: scale(1.02); }
+.shuffleBtn:active { transform: scale(0.96); }
 
 .error {
   text-align: center;

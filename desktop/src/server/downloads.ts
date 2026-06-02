@@ -67,13 +67,28 @@ export function clearAllDownloads(): void {
   } catch {}
 }
 
+const downloadQueue: string[] = []
+let activeDownloads = 0
+const MAX_CONCURRENT_DOWNLOADS = 3
+
 export async function startDownload(videoId: string): Promise<void> {
-  if (statusMap.get(videoId) === 'downloading') {
+  if (statusMap.get(videoId) === 'downloading' || statusMap.get(videoId) === 'pending') {
     return
   }
   if (isDownloaded(videoId)) return
 
   ensureDir()
+  statusMap.set(videoId, 'pending')
+  downloadQueue.push(videoId)
+  
+  processQueue()
+}
+
+async function processQueue() {
+  if (activeDownloads >= MAX_CONCURRENT_DOWNLOADS || downloadQueue.length === 0) return
+
+  const videoId = downloadQueue.shift()!
+  activeDownloads++
   statusMap.set(videoId, 'downloading')
 
   const outPath = getDownloadPath(videoId)
@@ -139,9 +154,12 @@ export async function startDownload(videoId: string): Promise<void> {
     console.log(`[Download] Saved audio for ${videoId} at ${outPath}`)
   } catch (err) {
     statusMap.set(videoId, 'error')
-    throw err
+    console.error(`[Download] Failed for ${videoId}:`, err)
   } finally {
     try { if (fs.existsSync(tmpMp4)) fs.unlinkSync(tmpMp4) } catch {}
     try { if (fs.existsSync(tmpM4a)) fs.unlinkSync(tmpM4a) } catch {}
+    
+    activeDownloads--
+    processQueue()
   }
 }

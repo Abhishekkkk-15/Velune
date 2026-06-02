@@ -24,9 +24,9 @@ export default function MediaCard({ item, size = 'md', contextItems }: Props) {
     if (item.type === 'artist') navigate(`/artist/${item.id}`)
     else if (item.type === 'album') navigate(`/album/${item.id}`)
     else if (item.type === 'playlist') navigate(`/playlist/${(item as any).playlistId || item.id}`)
-    else if (item.type === 'song') {
+    else if (item.type === 'song' || item.type === 'video') {
       if (contextItems) {
-        const songs = contextItems.filter(i => i.type === 'song')
+        const songs = contextItems.filter(i => i.type === 'song' || i.type === 'video')
         const index = songs.findIndex(i => i.id === item.id)
         if (index !== -1) {
           setQueue(songs.map(s => ({
@@ -47,7 +47,7 @@ export default function MediaCard({ item, size = 'md', contextItems }: Props) {
     }
   }
 
-  const subtitle = item.type === 'song'
+  const subtitle = (item.type === 'song' || item.type === 'video')
     ? (item as any).artists?.map((a: any) => a.name).join(', ')
     : (item as any).subtitle || (item as any).artists?.map((a: any) => a.name).join(', ') || item.type
 

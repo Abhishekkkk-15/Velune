@@ -39,7 +39,7 @@ export default function WidgetPlayer() {
       <div className={styles.overlay}>
         <div className={styles.title}>{currentTrack.title}</div>
         <div className={styles.artist}>
-          {currentTrack.artists.map(a => a.name).join(', ')}
+          {(currentTrack.artists || []).map(a => a.name).join(', ')}
         </div>
 
         <div className={styles.controls}>

@@ -57,7 +57,7 @@ export default function Queue() {
             )}
             <div className={styles.info}>
               <div className={styles.trackTitle}>{currentTrack.title}</div>
-              <div className={styles.trackArtist}>{currentTrack.artists.map(a => a.name).join(', ')}</div>
+              <div className={styles.trackArtist}>{(currentTrack.artists || []).map(a => a.name).join(', ')}</div>
             </div>
           </div>
         </div>

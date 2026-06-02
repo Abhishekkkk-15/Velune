@@ -62,7 +62,7 @@ function AppInner() {
           flex: 1,
           overflowY: 'auto',
           overflowX: 'hidden',
-          paddingBottom: currentTrack ? 'var(--player-height)' : '0',
+          paddingBottom: currentTrack ? 'calc(var(--player-height) + 32px)' : '0',
         }}>
           <AnimatePresence mode="wait">
             <Routes location={location} key={location.pathname.split('/')[1]}>
@@ -83,9 +83,9 @@ function AppInner() {
       {currentTrack && (
         <div style={{
           position: 'fixed',
-          bottom: 0,
-          left: 0,
-          right: 0,
+          bottom: 16,
+          left: 16,
+          right: 16,
           zIndex: 200,
         }}>
           <MiniPlayer />

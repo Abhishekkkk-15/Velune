@@ -212,7 +212,7 @@ export default function FullPlayer() {
               <div className={styles.trackTexts}>
                 <div className={styles.trackTitle}>{currentTrack.title}</div>
                 <div className={styles.trackArtist}>
-                  {currentTrack.artists.map(a => a.name).join(', ')}
+                  {(currentTrack.artists || []).map(a => a.name).join(', ')}
                 </div>
               </div>
               <button

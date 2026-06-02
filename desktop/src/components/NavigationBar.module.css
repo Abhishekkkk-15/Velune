@@ -48,6 +48,7 @@
   color: var(--on-surface-variant);
   border-radius: var(--radius-lg);
   transition: color 0.15s ease;
+  display: block;
 }
 .item:hover { color: var(--on-surface); }
 .item.active { color: var(--on-surface); }
@@ -59,6 +60,15 @@
   padding: 14px 16px;
   position: relative;
   border-radius: var(--radius-lg);
+  transition: background 0.15s ease, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.item:hover .itemInner {
+  background: var(--surface-container);
+}
+
+.item:active .itemInner {
+  transform: scale(0.96);
 }
 
 .pill {

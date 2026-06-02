@@ -22,7 +22,7 @@ export function useScrobble(currentTrack: Track | null, isPlaying: boolean, prog
 
     api.lastfmNowPlaying({
       sessionKey: lastfmSessionKey,
-      artist: currentTrack.artists.map(a => a.name).join(', '),
+      artist: (currentTrack.artists || []).map(a => a.name).join(', '),
       track: currentTrack.title,
       album: currentTrack.album,
       duration: currentTrack.duration,
@@ -42,7 +42,7 @@ export function useScrobble(currentTrack: Track | null, isPlaying: boolean, prog
     scrobbledRef.current = currentTrack.id
     api.lastfmScrobble({
       sessionKey: lastfmSessionKey,
-      artist: currentTrack.artists.map(a => a.name).join(', '),
+      artist: (currentTrack.artists || []).map(a => a.name).join(', '),
       track: currentTrack.title,
       album: currentTrack.album,
       duration: currentTrack.duration,

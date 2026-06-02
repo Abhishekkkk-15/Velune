@@ -1,11 +1,12 @@
 import { motion } from 'framer-motion'
 import { useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Play, Shuffle } from 'lucide-react'
+import { Play, Shuffle, Download } from 'lucide-react'
 import { api } from '../api/client'
 import TrackItem from '../components/TrackItem'
 import { TrackShimmerList } from '../components/ShimmerLoader'
 import { usePlayerStore } from '../store/playerStore'
+import { useSettingsStore } from '../store/settingsStore'
 import styles from './AlbumScreen.module.css'
 
 const pageVariants = {
@@ -17,12 +18,20 @@ const pageVariants = {
 export default function AlbumScreen() {
   const { id } = useParams<{ id: string }>()
   const { setQueue } = usePlayerStore()
+  const { maxCacheSize } = useSettingsStore()
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['album', id],
     queryFn: () => api.getAlbum(id!),
     enabled: !!id,
   })
+
+  const handleDownloadAll = () => {
+    if (!data?.songs.length) return
+    data.songs.forEach(t => {
+      api.download(t.id, maxCacheSize)
+    })
+  }
 
   const handlePlay = () => {
     if (!data?.songs.length) return
@@ -80,11 +89,15 @@ export default function AlbumScreen() {
                 <div className={styles.actions}>
                   <button className={styles.playBtn} onClick={handlePlay}>
                     <Play size={20} fill="white" color="white" />
-                    Play
+                    Play All
                   </button>
                   <button className={styles.shuffleBtn} onClick={handleShuffle}>
                     <Shuffle size={18} />
                     Shuffle
+                  </button>
+                  <button className={styles.shuffleBtn} onClick={handleDownloadAll} title="Download All">
+                    <Download size={18} />
+                    Download
                   </button>
                 </div>
               </div>

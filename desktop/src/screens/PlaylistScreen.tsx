@@ -1,12 +1,13 @@
 import { motion } from 'framer-motion'
 import { useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Play, Shuffle, ListMusic, Heart } from 'lucide-react'
+import { Play, Shuffle, ListMusic, Heart, Download } from 'lucide-react'
 import { api } from '../api/client'
 import TrackItem from '../components/TrackItem'
 import { TrackShimmerList } from '../components/ShimmerLoader'
 import { usePlayerStore } from '../store/playerStore'
 import { useLibraryStore } from '../store/libraryStore'
+import { useSettingsStore } from '../store/settingsStore'
 import styles from './PlaylistScreen.module.css'
 
 const pageVariants = {
@@ -21,12 +22,20 @@ export default function PlaylistScreen() {
   const { savePlaylist, unsavePlaylist, isPlaylistSaved } = useLibraryStore()
   
   const isSaved = isPlaylistSaved(id!)
-
   const { data, isLoading, error } = useQuery({
     queryKey: ['playlist', id],
     queryFn: () => api.getPlaylist(id!),
     enabled: !!id,
   })
+
+  const { maxCacheSize } = useSettingsStore()
+
+  const handleDownloadAll = () => {
+    if (!data?.songs.length) return
+    data.songs.forEach(t => {
+      api.download(t.id, maxCacheSize)
+    })
+  }
 
   const handlePlay = () => {
     if (!data?.songs.length) return
@@ -83,6 +92,10 @@ export default function PlaylistScreen() {
                 <button className={styles.shuffleBtn} onClick={handleShuffle}>
                   <Shuffle size={18} />
                   Shuffle
+                </button>
+                <button className={styles.shuffleBtn} onClick={handleDownloadAll} title="Download All">
+                  <Download size={18} />
+                  Download
                 </button>
                 <button 
                   className={styles.shuffleBtn} 

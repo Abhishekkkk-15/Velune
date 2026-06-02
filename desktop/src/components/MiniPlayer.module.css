@@ -1,7 +1,8 @@
 .player {
   height: var(--player-height);
   background: var(--surface-container-high);
-  border-top: 1px solid var(--outline-variant);
+  border-radius: 24px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px var(--outline-variant);
   position: relative;
   overflow: hidden;
 }
@@ -69,10 +70,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.15s;
   cursor: pointer;
 }
 .btn:hover { background: var(--surface-bright); }
+.btn:active { transform: scale(0.9); }
 
 .btnPrimary {
   width: 40px;
@@ -83,6 +85,7 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: opacity 0.15s;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.15s;
 }
-.btnPrimary:hover { opacity: 0.85; }
+.btnPrimary:hover { opacity: 0.85; transform: scale(1.05); }
+.btnPrimary:active { transform: scale(0.95); }
