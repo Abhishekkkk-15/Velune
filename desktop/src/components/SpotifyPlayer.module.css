@@ -1,0 +1,336 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  background-color: #121212;
+  color: white;
+}
+
+.backgroundGradient {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: radial-gradient(circle at center, var(--accent-color) 0%, #121212 70%);
+  opacity: 0.15;
+  pointer-events: none;
+}
+
+.header {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+}
+
+.headerTitle {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.moreWrapper {
+  position: relative;
+}
+
+.moreOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+}
+
+.moreMenu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: #282828;
+  border-radius: 8px;
+  padding: 8px;
+  z-index: 20;
+  min-width: 220px;
+  box-shadow: 0 16px 24px rgba(0, 0, 0, 0.3), 0 6px 8px rgba(0, 0, 0, 0.2);
+}
+
+.moreMenu button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  width: 100%;
+  border-radius: 4px;
+  font-size: 14px;
+  color: white;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.moreMenu button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.menuDivider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 6px 0;
+}
+
+.menuLabel {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.5);
+  padding: 6px 12px;
+}
+
+.newPlaylistRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+}
+
+.newPlaylistInput {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: 4px;
+  padding: 8px 10px;
+  color: white;
+  font-size: 14px;
+}
+
+.newPlaylistInput:focus {
+  outline: 1px solid white;
+}
+
+.newPlaylistConfirm {
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  background: white;
+  color: black;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mainContent {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  min-height: 0;
+}
+
+.albumArt {
+  max-width: 60vh;
+  max-height: 60vh;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 8px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+}
+
+.bottomBar {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px 24px;
+  background: #000000;
+}
+
+.leftControls {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+
+.trackInfo {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.trackTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trackArtist {
+  font-size: 12px;
+  color: #b3b3b3;
+  margin: 2px 0 0 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.centerControls {
+  flex: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 722px;
+}
+
+.playbackButtons {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin-bottom: 8px;
+}
+
+.iconBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #b3b3b3;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: color 0.2s, transform 0.1s;
+}
+
+.iconBtn:hover {
+  color: white;
+}
+
+.iconBtn:active {
+  transform: scale(0.95);
+}
+
+.iconBtn.active {
+  color: var(--primary);
+}
+
+.playBtn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: white;
+  color: black;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+
+.playBtn:hover {
+  transform: scale(1.05);
+}
+
+.playBtn:active {
+  transform: scale(0.95);
+}
+
+.progressRow {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 8px;
+}
+
+.timeLabel {
+  font-size: 11px;
+  color: #a7a7a7;
+  font-variant-numeric: tabular-nums;
+  min-width: 40px;
+}
+
+.timeLabel.right {
+  text-align: right;
+}
+
+.progressBar {
+  flex: 1;
+  height: 12px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.progressTrack {
+  flex: 1;
+  height: 4px;
+  background: #4d4d4d;
+  border-radius: 2px;
+  position: relative;
+}
+
+.progressFill {
+  height: 100%;
+  background: white;
+  border-radius: 2px;
+  position: relative;
+}
+
+.progressThumb {
+  position: absolute;
+  top: 50%;
+  right: -6px;
+  transform: translateY(-50%);
+  width: 12px;
+  height: 12px;
+  background: white;
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.2s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.progressBar:hover .progressThumb {
+  opacity: 1;
+}
+
+.progressBar:hover .progressFill {
+  background: var(--primary);
+}
+
+.rightControls {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+}
+
+.volumeRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 125px;
+}
+
+.volumeSlider {
+  flex: 1;
+  height: 4px;
+  cursor: pointer;
+  accent-color: white;
+}
+
+.volumeSlider:hover {
+  accent-color: var(--primary);
+}

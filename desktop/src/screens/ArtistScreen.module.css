@@ -1,0 +1,150 @@
+.page { min-height: 100%; }
+
+.heroShimmer {
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.heroArtShimmer {
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+}
+.heroNameShimmer {
+  width: 300px;
+  height: 36px;
+  border-radius: 6px;
+}
+
+.error {
+  padding: 60px;
+  text-align: center;
+  color: var(--on-surface-variant);
+}
+
+.hero {
+  position: relative;
+  min-height: 300px;
+  background: var(--surface-container);
+  background-size: cover;
+  background-position: center top;
+  display: flex;
+  align-items: flex-end;
+}
+
+.heroOverlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, var(--background) 90%);
+}
+
+.heroContent {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-end;
+  gap: 24px;
+  padding: 32px;
+  width: 100%;
+}
+
+.heroImg {
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  flex-shrink: 0;
+}
+
+.heroInfo { flex: 1; }
+.heroLabel {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--on-surface-variant);
+  margin-bottom: 4px;
+}
+.heroName {
+  font-size: 48px;
+  font-weight: 800;
+  color: var(--on-surface);
+  line-height: 1.1;
+  margin-bottom: 8px;
+}
+.heroDesc {
+  font-size: 14px;
+  color: var(--on-surface-variant);
+  margin-bottom: 16px;
+  max-width: 600px;
+  line-height: 1.6;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.heroActions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.playBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 28px;
+  border-radius: var(--radius-full);
+  background: var(--primary);
+  color: white;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: opacity 0.15s;
+}
+.playBtn:hover { opacity: 0.85; }
+
+.shuffleBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: var(--radius-full);
+  background: var(--surface-container);
+  color: var(--on-surface);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  border: 1px solid var(--outline-variant);
+  transition: background 0.15s;
+}
+.shuffleBtn:hover { background: var(--surface-container-high); }
+
+.content {
+  padding: 24px 32px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.section { }
+
+.sectionTitle {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--on-surface);
+  margin-bottom: 16px;
+}
+
+.cardRow {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  scrollbar-width: none;
+}
+.cardRow::-webkit-scrollbar { display: none; }

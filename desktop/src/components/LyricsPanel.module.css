@@ -1,0 +1,47 @@
+.container {
+  height: 100%;
+  overflow: hidden; /* Hide scrollbar for smooth transform scrolling */
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  mask-image: linear-gradient(to bottom, transparent, black 15%, black 85%, transparent);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black 15%, black 85%, transparent);
+}
+
+.loading, .noLyrics {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--on-surface-variant);
+  font-size: 14px;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 50vh 24px; /* Pad 50vh so first and last lines can reach the center */
+  transform: translateY(0);
+  will-change: transform;
+}
+
+.line {
+  font-size: 24px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.4);
+  line-height: 1.4;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  transition: color 0.4s ease, font-size 0.4s ease, opacity 0.4s ease, text-shadow 0.4s ease;
+  cursor: default;
+  text-align: center;
+}
+
+.line.active {
+  color: #fff;
+  font-size: 32px;
+  opacity: 1;
+  text-shadow: 0 0 20px var(--primary-glow, rgba(255,255,255,0.4));
+}
+

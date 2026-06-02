@@ -37,8 +37,8 @@ function createWindow() {
   const preloadPath = path.join(__dirname, 'preload.js')
 
   mainWindow = new BrowserWindow({
-    width: 1080,
-    height: 680,
+    width: 1200,
+    height: 780,
     minWidth: 900,
     minHeight: 600,
     frame: false,
@@ -131,39 +131,22 @@ ipcMain.handle('close-window', () => mainWindow?.close())
 let isMiniPlayer = false
 let normalBounds = { width: 1200, height: 780, x: 0, y: 0 }
 
-ipcMain.handle('toggle-mini-player', (event, theme?: string) => {
+ipcMain.handle('toggle-mini-player', () => {
   if (!mainWindow) return false
 
   if (isMiniPlayer) {
     mainWindow.setAlwaysOnTop(false)
-    mainWindow.setMinimumSize(900, 600)
-    mainWindow.setMaximumSize(9999, 9999)
     mainWindow.setBounds(normalBounds)
+    mainWindow.setMinimumSize(900, 600)
     isMiniPlayer = false
   } else {
     normalBounds = mainWindow.getBounds()
-
-    let width = 300
-    let height = 300
-    if (theme === 'floating') { width = 400; height = 80 }
-    else if (theme === 'vinyl') { width = 340; height = 120 }
-    else if (theme === 'docked') { width = 400; height = 80 } // no docked widget makes sense, but we'll use a pill
-
-    mainWindow.setMinimumSize(width, height)
-    mainWindow.setMaximumSize(width, height)
-    mainWindow.setBounds({ width, height })
+    mainWindow.setMinimumSize(300, 300)
+    mainWindow.setBounds({ width: 300, height: 300 })
     mainWindow.setAlwaysOnTop(true, 'floating')
     isMiniPlayer = true
   }
   return isMiniPlayer
-})
-
-ipcMain.handle('resize-widget', (event, width: number, height: number) => {
-  if (isMiniPlayer && mainWindow) {
-    mainWindow.setMinimumSize(width, height)
-    mainWindow.setMaximumSize(width, height)
-    mainWindow.setBounds({ width, height })
-  }
 })
 
 // --- Taskbar / Thumbar Buttons (Windows) ---

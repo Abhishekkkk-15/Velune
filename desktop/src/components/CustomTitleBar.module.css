@@ -1,0 +1,39 @@
+.titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  height: 32px;
+  background: var(--background);
+  -webkit-app-region: drag;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.controls {
+  display: flex;
+  height: 100%;
+  -webkit-app-region: no-drag;
+}
+
+.controlBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 100%;
+  background: transparent;
+  border: none;
+  color: #a7a7a7;
+  cursor: pointer;
+  transition: background-color 0.1s, color 0.1s;
+}
+
+.controlBtn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.controlBtn.close:hover {
+  background-color: #e81123;
+  color: white;
+}
