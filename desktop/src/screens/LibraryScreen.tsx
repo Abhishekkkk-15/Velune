@@ -7,6 +7,7 @@ import { usePlayerStore } from '../store/playerStore'
 import { proxyImage, api } from '../api/client'
 import TrackItem from '../components/TrackItem'
 import ChipsRow from '../components/ChipsRow'
+import SpotifyImportModal from '../components/SpotifyImportModal'
 import styles from './LibraryScreen.module.css'
 
 const TABS = [
@@ -26,6 +27,7 @@ const pageVariants = {
 export default function LibraryScreen() {
   const [tab, setTab] = useState('songs')
   const [showNewPlaylist, setShowNewPlaylist] = useState(false)
+  const [showSpotifyModal, setShowSpotifyModal] = useState(false)
   const [newName, setNewName] = useState('')
   const [downloadIds, setDownloadIds] = useState<string[]>([])
   const [downloadsLoading, setDownloadsLoading] = useState(false)
@@ -128,10 +130,16 @@ export default function LibraryScreen() {
       <div className={styles.header}>
         <h1 className={styles.title}>Library</h1>
         {tab === 'playlists' && (
-          <button className={styles.addBtn} onClick={() => setShowNewPlaylist(true)}>
-            <Plus size={18} />
-            New Playlist
-          </button>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button className={styles.addBtn} onClick={() => setShowSpotifyModal(true)} style={{ background: '#1DB954', color: '#fff' }}>
+              <Plus size={18} />
+              Import Spotify
+            </button>
+            <button className={styles.addBtn} onClick={() => setShowNewPlaylist(true)}>
+              <Plus size={18} />
+              New Playlist
+            </button>
+          </div>
         )}
       </div>
 
@@ -156,6 +164,10 @@ export default function LibraryScreen() {
           <button className={styles.createBtn} onClick={handleCreatePlaylist}>Create</button>
           <button className={styles.cancelBtn} onClick={() => setShowNewPlaylist(false)}>Cancel</button>
         </div>
+      )}
+
+      {showSpotifyModal && (
+        <SpotifyImportModal onClose={() => setShowSpotifyModal(false)} />
       )}
 
       {tab === 'songs' && (
@@ -275,9 +287,7 @@ export default function LibraryScreen() {
                 </div>
               ))}
               {playlists.map(pl => (
-                <div key={pl.id} className={styles.playlistCard} onClick={() => {
-                  if (pl.tracks.length > 0) setQueue(pl.tracks, 0)
-                }}>
+                <div key={pl.id} className={styles.playlistCard} onClick={() => navigate(`/playlist/${pl.id}`)}>
                   <div className={styles.playlistArt}>
                     {pl.tracks[0]?.thumbnail
                       ? <img src={proxyImage(pl.tracks[0].thumbnail)} alt="" />

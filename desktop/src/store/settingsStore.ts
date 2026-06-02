@@ -23,6 +23,9 @@ interface SettingsState {
   discordEnabled: boolean
   discordToken: string
 
+  spotifyClientId: string
+  spotifyClientSecret: string
+
   eqBands: number[]
   playerTheme: 'default' | 'spotify'
   miniPlayerTheme: 'floating' | 'vinyl' | 'docked'
@@ -42,6 +45,8 @@ interface SettingsState {
   setLastfmScrobbleThreshold: (v: number) => void
   setDiscordEnabled: (v: boolean) => void
   setDiscordToken: (v: string) => void
+  setSpotifyClientId: (v: string) => void
+  setSpotifyClientSecret: (v: string) => void
   setEqBand: (index: number, gain: number) => void
   setPlayerTheme: (v: 'default' | 'spotify') => void
   setMiniPlayerTheme: (v: 'floating' | 'vinyl' | 'docked') => void
@@ -71,6 +76,9 @@ export const useSettingsStore = create<SettingsState>()(
       discordEnabled: false,
       discordToken: '',
 
+      spotifyClientId: '',
+      spotifyClientSecret: '',
+
       eqBands: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
       playerTheme: 'default',
       miniPlayerTheme: 'floating',
@@ -90,6 +98,8 @@ export const useSettingsStore = create<SettingsState>()(
       setLastfmScrobbleThreshold: (v) => set({ lastfmScrobbleThreshold: v }),
       setDiscordEnabled: (v) => set({ discordEnabled: v }),
       setDiscordToken: (v) => set({ discordToken: v }),
+      setSpotifyClientId: (v) => set({ spotifyClientId: v }),
+      setSpotifyClientSecret: (v) => set({ spotifyClientSecret: v }),
       setEqBand: (index, gain) => set((s) => {
         const next = [...s.eqBands]
         next[index] = gain

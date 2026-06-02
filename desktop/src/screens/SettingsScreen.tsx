@@ -281,6 +281,8 @@ function IntegrationsSection() {
   const [lastfmApiSecret, setLastfmApiSecret] = useState(s.lastfmApiSecret)
   const [lastfmSessionKey, setLastfmSessionKey] = useState(s.lastfmSessionKey)
   const [discordClientId, setDiscordClientId] = useState(s.discordToken)
+  const [spotifyClientId, setSpotifyClientId] = useState(s.spotifyClientId)
+  const [spotifyClientSecret, setSpotifyClientSecret] = useState(s.spotifyClientSecret)
 
   const saveLastfm = () => {
     s.setLastfmApiKey(lastfmApiKey)
@@ -290,6 +292,11 @@ function IntegrationsSection() {
 
   const saveDiscord = () => {
     s.setDiscordToken(discordClientId)
+  }
+
+  const saveSpotify = () => {
+    s.setSpotifyClientId(spotifyClientId)
+    s.setSpotifyClientSecret(spotifyClientSecret)
   }
 
   return (
@@ -364,6 +371,32 @@ function IntegrationsSection() {
           </div>
         </>
       )}
+
+      <h3 className={styles.sectionHeader}>Spotify Importer</h3>
+      <SettingRow label="Spotify Client ID" desc="Used for fetching full playlists (Optional)">
+        <input
+          className={styles.input}
+          type="text"
+          value={spotifyClientId}
+          onChange={e => setSpotifyClientId(e.target.value)}
+          placeholder="Client ID"
+        />
+      </SettingRow>
+      <SettingRow label="Spotify Client Secret" desc="Used alongside Client ID">
+        <input
+          className={styles.input}
+          type="password"
+          value={spotifyClientSecret}
+          onChange={e => setSpotifyClientSecret(e.target.value)}
+          placeholder="Client Secret"
+        />
+      </SettingRow>
+      <p className={styles.settingHint}>
+        If you leave these blank, Velune will use a public scraper that is limited to the first 100 tracks. Create an app at developer.spotify.com to get these keys.
+      </p>
+      <div className={styles.saveRow}>
+        <button className={styles.saveBtn} onClick={saveSpotify}>Save Spotify Settings</button>
+      </div>
     </div>
   )
 }

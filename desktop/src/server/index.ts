@@ -28,6 +28,7 @@ import {
 import { fetchLyrics } from './lyrics'
 import { lastfmScrobble, lastfmNowPlaying } from './lastfm'
 import { setDiscordActivity, clearDiscordActivity } from './discord'
+import { fetchSpotifyPlaylist } from './spotify'
 
 const app = express()
 const PORT = 3001
@@ -96,6 +97,62 @@ app.get('/api/next', async (req, res) => {
     const { videoId, playlistId } = req.query
     res.json(await yt.getNext(String(videoId || ''), playlistId ? String(playlistId) : undefined))
   } catch (e: any) { res.status(500).json({ error: e.message }) }
+})
+
+app.post('/api/import/spotify', async (req, res) => {
+  try {
+    const { url, clientId, clientSecret } = req.body
+    if (!url) return res.status(400).json({ error: 'url required' })
+
+    const playlist = await fetchSpotifyPlaylist(url, clientId, clientSecret)
+    
+    // Resolve Spotify tracks to YouTube videos
+    const matchedTracks = []
+    for (const track of playlist.tracks) {
+      const query = `${track.name} ${track.artist}`
+      try {
+        const searchResults = await yt.search(query, 'song')
+        if (searchResults && searchResults.items && searchResults.items.length > 0) {
+          
+          let bestMatch = null
+          
+          // Smart Matching: Compare duration if available from Spotify
+          if (track.durationMs) {
+            const targetSeconds = track.durationMs / 1000
+            let closestDiff = Infinity
+
+            for (const item of searchResults.items) {
+              if (item.type !== 'video' && item.type !== 'song') continue
+              
+              const itemSeconds = item.duration || 0
+              const durationDiff = Math.abs(itemSeconds - targetSeconds)
+
+              // If within a strict 3-second margin, it's a solid match
+              if (durationDiff <= 3 && durationDiff < closestDiff) {
+                closestDiff = durationDiff
+                bestMatch = item
+              }
+            }
+          }
+
+          // Fallback: If no strict duration match, just pick the first valid song/video result.
+          if (!bestMatch) {
+            bestMatch = searchResults.items.find((item: any) => item.type === 'video' || item.type === 'song')
+          }
+          
+          if (bestMatch) {
+            matchedTracks.push(bestMatch)
+          }
+        }
+      } catch (err) {
+        console.warn(`[Spotify Import] Failed to find match for ${query}`, err)
+      }
+    }
+
+    res.json({ title: playlist.title, tracks: matchedTracks })
+  } catch (e: any) {
+    res.status(500).json({ error: e.message })
+  }
 })
 
 // YouTube video IDs are exactly 11 chars (alphanumeric + _ + -).

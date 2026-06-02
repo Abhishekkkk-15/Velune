@@ -26,6 +26,7 @@
     "discord-rpc": "^4.0.1",
     "express": "^4.19.2",
     "framer-motion": "^11.3.2",
+    "isomorphic-unfetch": "^4.0.2",
     "localforage": "^1.10.0",
     "lucide-react": "^0.408.0",
     "md5": "^2.3.0",
@@ -33,6 +34,7 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.25.1",
+    "spotify-url-info": "^3.3.0",
     "youtubei.js": "^17.0.1",
     "zustand": "^4.5.4"
   },

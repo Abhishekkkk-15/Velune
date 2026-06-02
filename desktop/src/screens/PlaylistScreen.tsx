@@ -20,16 +20,26 @@ const pageVariants = {
 export default function PlaylistScreen() {
   const { id } = useParams<{ id: string }>()
   const { setQueue } = usePlayerStore()
-  const { savePlaylist, unsavePlaylist, isPlaylistSaved, setDownloadStatus, getDownloadStatus, setDownloadMeta } = useLibraryStore()
+  const { savePlaylist, unsavePlaylist, isPlaylistSaved, setDownloadStatus, getDownloadStatus, setDownloadMeta, playlists } = useLibraryStore()
   const [downloadingAll, setDownloadingAll] = useState(false)
   const [allDone, setAllDone] = useState(false)
 
-  const isSaved = isPlaylistSaved(id!)
-  const { data, isLoading, error } = useQuery({
+  const isLocal = id?.startsWith('pl_')
+  const localPlaylist = isLocal ? playlists.find(p => p.id === id) : null
+
+  const isSaved = isLocal ? true : isPlaylistSaved(id!)
+  const { data: remoteData, isLoading, error } = useQuery({
     queryKey: ['playlist', id],
     queryFn: () => api.getPlaylist(id!),
-    enabled: !!id,
+    enabled: !!id && !isLocal,
   })
+
+  const data = isLocal && localPlaylist ? {
+    id: localPlaylist.id,
+    title: localPlaylist.name,
+    thumbnail: localPlaylist.tracks[0]?.thumbnail || '',
+    songs: localPlaylist.tracks,
+  } : remoteData
 
   const { maxCacheSize } = useSettingsStore()
 
@@ -101,7 +111,7 @@ export default function PlaylistScreen() {
       exit="exit"
       transition={{ duration: 0.25 }}
     >
-      {isLoading && (
+      {isLoading && !isLocal && (
         <div style={{ padding: 32 }}>
           <TrackShimmerList count={12} />
         </div>
@@ -145,16 +155,18 @@ export default function PlaylistScreen() {
                       : <Download size={18} />}
                   {allDone ? 'Downloaded' : downloadingAll ? 'Downloading…' : 'Download'}
                 </button>
-                <button
-                  className={styles.shuffleBtn}
-                  onClick={() => {
-                    if (isSaved) unsavePlaylist(id!)
-                    else savePlaylist({ id: id!, title: data.title, thumbnail: data.thumbnail })
-                  }}
-                  title={isSaved ? "Remove from Library" : "Save to Library"}
-                >
-                  <Heart size={18} fill={isSaved ? "var(--primary)" : "transparent"} color={isSaved ? "var(--primary)" : "currentColor"} />
-                </button>
+                {!isLocal && (
+                  <button
+                    className={styles.shuffleBtn}
+                    onClick={() => {
+                      if (isSaved) unsavePlaylist(id!)
+                      else savePlaylist({ id: id!, title: data.title, thumbnail: data.thumbnail })
+                    }}
+                    title={isSaved ? "Remove from Library" : "Save to Library"}
+                  >
+                    <Heart size={18} fill={isSaved ? "var(--primary)" : "transparent"} color={isSaved ? "var(--primary)" : "currentColor"} />
+                  </button>
+                )}
               </div>
             </div>
           </div>
