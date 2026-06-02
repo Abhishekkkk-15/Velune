@@ -85,7 +85,7 @@ function AppearanceSection() {
         >
           <option value="floating">Floating Pill</option>
           <option value="vinyl">Vinyl Art</option>
-          <option value="docked">Docked Bottom</option>
+          <option value="docked">Square Card</option>
         </select>
       </SettingRow>
       <SettingRow label="Dynamic Color" desc="Extract accent color from album art">

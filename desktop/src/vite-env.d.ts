@@ -14,7 +14,8 @@ declare global {
       minimizeWindow: () => Promise<void>
       maximizeWindow: () => Promise<void>
       closeWindow: () => Promise<void>
-      toggleMiniPlayer: () => Promise<boolean>
+      toggleMiniPlayer: (theme?: string) => Promise<boolean>
+      resizeWidget: (width: number, height: number) => Promise<void>
       setThumbarButtons: (isPlaying: boolean) => void
       onMediaCommand: (cb: (cmd: string) => void) => void
       offMediaCommand: () => void

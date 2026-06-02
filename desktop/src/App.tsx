@@ -62,11 +62,7 @@ function AppInner() {
           flex: 1,
           overflowY: 'auto',
           overflowX: 'hidden',
-          paddingBottom: currentTrack
-            ? miniPlayerTheme === 'docked' ? 'var(--player-height)'
-              : miniPlayerTheme === 'vinyl' ? 'calc(var(--player-height) + 40px)'
-                : 'calc(var(--player-height) + 32px)'
-            : '0',
+          paddingBottom: currentTrack ? 'var(--player-height)' : '0',
         }}>
           <AnimatePresence mode="wait">
             <Routes location={location} key={location.pathname.split('/')[1]}>
@@ -87,17 +83,12 @@ function AppInner() {
       {currentTrack && (
         <div style={{
           position: 'fixed',
-          bottom: miniPlayerTheme === 'docked' ? 0 : miniPlayerTheme === 'vinyl' ? 24 : 24,
-          left: miniPlayerTheme === 'docked' ? 0 : 0,
-          right: miniPlayerTheme === 'docked' ? 0 : 0,
+          bottom: 0,
+          left: 0,
+          right: 0,
           zIndex: 200,
-          display: 'flex',
-          justifyContent: miniPlayerTheme === 'docked' ? 'stretch' : 'center',
-          pointerEvents: 'none',
         }}>
-          <div style={{ pointerEvents: 'auto', width: miniPlayerTheme === 'docked' ? '100%' : 'auto' }}>
-            <MiniPlayer />
-          </div>
+          <MiniPlayer />
         </div>
       )}
       <AnimatePresence>

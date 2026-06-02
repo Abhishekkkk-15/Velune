@@ -12,7 +12,6 @@ export default function MiniPlayer() {
     setIsPlaying, toggleFullPlayer, playNext, playPrev, toggleQueue,
   } = usePlayerStore()
   const { isLiked, likeSong, unlikeSong } = useLibraryStore()
-  const { miniPlayerTheme } = useSettingsStore()
 
   if (!currentTrack) return null
 
@@ -27,66 +26,9 @@ export default function MiniPlayer() {
     else likeSong(currentTrack)
   }
 
-  const themeClass = styles[`theme-${miniPlayerTheme}`] || styles['theme-floating']
-
-  // ======================
-  // VINYL THEME RENDER
-  // ======================
-  if (miniPlayerTheme === 'vinyl') {
-    return (
-      <motion.div
-        className={`${styles.player} ${themeClass}`}
-        initial={{ y: 80 }}
-        animate={{ y: 0 }}
-        transition={{ type: 'spring', stiffness: 400, damping: 35 }}
-      >
-        <div className={styles.vinylInner}>
-          <div className={`${styles.vinylArtWrap} ${isPlaying ? styles.spinning : ''}`} onClick={toggleFullPlayer}>
-            {thumbnail && <img src={thumbnail} alt={currentTrack.title} className={styles.vinylArt} />}
-            <div className={styles.vinylHole} />
-          </div>
-
-          <div className={styles.vinylContent}>
-            <div className={styles.vinylHeader}>
-              <div className={styles.info} onClick={toggleFullPlayer}>
-                <div className={styles.title}>{currentTrack.title}</div>
-                <div className={styles.artist}>
-                  {(currentTrack.artists ?? []).map(a => a.name).join(', ')}
-                </div>
-              </div>
-            </div>
-
-            <div className={styles.vinylProgressArea}>
-              <div className={styles.vinylProgressBar}>
-                <div className={styles.vinylProgressFill} style={{ width: `${progressPct}%` }} />
-              </div>
-            </div>
-
-            <div className={styles.vinylControls}>
-              <button className={styles.btnIcon} onClick={() => playPrev()}>
-                <SkipBack size={20} fill="black" color="black" />
-              </button>
-              <button className={styles.btnIconLarge} onClick={() => setIsPlaying(!isPlaying)}>
-                {isPlaying
-                  ? <Pause size={24} fill="black" color="black" />
-                  : <Play size={24} fill="black" color="black" style={{ marginLeft: 3 }} />}
-              </button>
-              <button className={styles.btnIcon} onClick={() => playNext()}>
-                <SkipForward size={20} fill="black" color="black" />
-              </button>
-            </div>
-          </div>
-        </div>
-      </motion.div>
-    )
-  }
-
-  // ======================
-  // FLOATING / DOCKED THEMES
-  // ======================
   return (
     <motion.div
-      className={`${styles.player} ${themeClass}`}
+      className={styles.player}
       initial={{ y: 80 }}
       animate={{ y: 0 }}
       transition={{ type: 'spring', stiffness: 400, damping: 35 }}
@@ -129,7 +71,8 @@ export default function MiniPlayer() {
           <button className={styles.btn} onClick={async (e) => {
             e.stopPropagation()
             if (window.electron?.toggleMiniPlayer) {
-              const isMini = await window.electron.toggleMiniPlayer()
+              const theme = useSettingsStore.getState().miniPlayerTheme
+              const isMini = await window.electron.toggleMiniPlayer(theme)
               usePlayerStore.getState().setIsWidgetMode(isMini)
             }
           }} title="Mini Player">

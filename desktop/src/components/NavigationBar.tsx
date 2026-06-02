@@ -1,6 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Home, Search, Library, Clock, BarChart2, Settings, Music2 } from 'lucide-react'
+import { Home, Search, Library, Clock, BarChart2, Settings } from 'lucide-react'
+import logoSrc from '../../assets/ic_velune_concept.svg'
 import styles from './NavigationBar.module.css'
 
 const navItems = [
@@ -17,7 +18,7 @@ export default function NavigationBar() {
   return (
     <nav className={styles.nav}>
       <div className={styles.logo} onClick={() => navigate('/')}>
-        <Music2 size={28} color="var(--primary)" />
+        <img src={logoSrc} alt="Velune Logo" style={{ width: 28, height: 28, objectFit: 'contain' }} />
         <span className={styles.logoText}>Velune</span>
       </div>
 
