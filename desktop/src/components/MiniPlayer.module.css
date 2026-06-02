@@ -89,3 +89,196 @@
 }
 .btnPrimary:hover { opacity: 0.85; transform: scale(1.05); }
 .btnPrimary:active { transform: scale(0.95); }
+/* Floating (Default) Theme */
+.theme-floating {
+  border-radius: 100px; /* Full pill shape */
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255,255,255,0.05);
+  background: #1a1a1a; /* Deep dark grey from the image */
+  min-width: 380px;
+  padding: 4px; /* Tight wrapper */
+  height: auto; /* Remove fixed height */
+}
+
+.theme-floating .inner {
+  height: 64px;
+  padding: 0 16px 0 8px; /* Extra space on left for image */
+}
+
+.theme-floating .thumbnail {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px; /* Smoother squircle */
+}
+
+.theme-floating .title {
+  text-transform: uppercase;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: #fff;
+}
+
+.theme-floating .artist {
+  color: #aaa;
+  font-size: 12px;
+  margin-top: 1px;
+}
+
+.theme-floating .progress {
+  display: none; /* The image has no top progress bar */
+}
+
+.theme-floating .btnPrimary {
+  background: var(--primary);
+  width: 44px;
+  height: 44px;
+}
+
+/* Docked Theme */
+.theme-docked {
+  border-radius: 0;
+  box-shadow: none;
+  border-top: 1px solid var(--outline-variant);
+}
+
+/* Vinyl Theme */
+.theme-vinyl {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0,0,0,0.05);
+  overflow: visible; /* Important: Allows the circular art to spill out */
+  max-width: 320px; /* Constrain width to look like a card */
+  margin: 0 auto;
+}
+.theme-vinyl .title {
+  color: #1a1a1a;
+  font-size: 15px;
+  font-weight: 700;
+}
+.theme-vinyl .artist {
+  color: #666;
+  font-size: 13px;
+  margin-top: 0;
+}
+
+.vinylInner {
+  display: flex;
+  align-items: stretch;
+  height: 100%;
+  padding-left: 50px; /* Leave space for the overhanging circle */
+}
+
+/* The Vinyl Record Art */
+.vinylArtWrap {
+  position: absolute;
+  left: -20px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  background: #111;
+  box-shadow: -4px 4px 12px rgba(0,0,0,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 5;
+}
+
+.vinylArtWrap.spinning {
+  animation: spin 8s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: translateY(-50%) rotate(0deg); }
+  to { transform: translateY(-50%) rotate(360deg); }
+}
+
+.vinylArt {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.vinylHole {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  background: white;
+  border-radius: 50%;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+}
+
+/* Text and Controls Content Area */
+.vinylContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 12px 20px 12px 50px;
+  position: relative;
+}
+
+.vinylHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.vinylProgressArea {
+  margin-bottom: 12px;
+}
+
+.vinylProgressBar {
+  height: 4px;
+  background: #e0e0e0;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.vinylProgressFill {
+  height: 100%;
+  background: #6C2BD9; /* Deep purple from the image */
+  border-radius: 2px;
+  transition: width 0.1s linear;
+}
+
+.vinylControls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 24px;
+}
+
+.btnIcon {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.btnIcon:active {
+  transform: scale(0.85);
+}
+
+.btnIconLarge {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.btnIconLarge:active {
+  transform: scale(0.85);
+}

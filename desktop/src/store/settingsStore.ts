@@ -25,6 +25,7 @@ interface SettingsState {
 
   eqBands: number[]
   playerTheme: 'default' | 'spotify'
+  miniPlayerTheme: 'floating' | 'vinyl' | 'docked'
 
   setAccentColor: (v: string) => void
   setDynamicColor: (v: boolean) => void
@@ -43,6 +44,7 @@ interface SettingsState {
   setDiscordToken: (v: string) => void
   setEqBand: (index: number, gain: number) => void
   setPlayerTheme: (v: 'default' | 'spotify') => void
+  setMiniPlayerTheme: (v: 'floating' | 'vinyl' | 'docked') => void
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -71,6 +73,7 @@ export const useSettingsStore = create<SettingsState>()(
 
       eqBands: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
       playerTheme: 'default',
+      miniPlayerTheme: 'floating',
 
       setAccentColor: (v) => set({ accentColor: v }),
       setDynamicColor: (v) => set({ dynamicColor: v }),
@@ -93,6 +96,7 @@ export const useSettingsStore = create<SettingsState>()(
         return { eqBands: next }
       }),
       setPlayerTheme: (v) => set({ playerTheme: v }),
+      setMiniPlayerTheme: (v) => set({ miniPlayerTheme: v }),
     }),
     { name: 'velune-settings' }
   )

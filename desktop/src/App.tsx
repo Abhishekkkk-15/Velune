@@ -26,7 +26,7 @@ import { api } from './api/client'
 
 function AppInner() {
   const { currentTrack, showFullPlayer, showQueue, isPlaying, progress, duration, isWidgetMode } = usePlayerStore()
-  const { accentColor, playerTheme } = useSettingsStore()
+  const { accentColor, playerTheme, miniPlayerTheme } = useSettingsStore()
   useAudio()
   useScrobble(currentTrack, isPlaying, progress, duration)
   useColorExtractor(currentTrack?.thumbnail)
@@ -38,7 +38,7 @@ function AppInner() {
   useEffect(() => {
     // Enforce cache limit on app startup
     const maxBytes = useSettingsStore.getState().maxCacheSize * 1024 * 1024
-    api.enforceCacheLimit(maxBytes).catch(() => {})
+    api.enforceCacheLimit(maxBytes).catch(() => { })
   }, [])
 
   const location = useLocation()
@@ -62,7 +62,11 @@ function AppInner() {
           flex: 1,
           overflowY: 'auto',
           overflowX: 'hidden',
-          paddingBottom: currentTrack ? 'calc(var(--player-height) + 32px)' : '0',
+          paddingBottom: currentTrack
+            ? miniPlayerTheme === 'docked' ? 'var(--player-height)'
+              : miniPlayerTheme === 'vinyl' ? 'calc(var(--player-height) + 40px)'
+                : 'calc(var(--player-height) + 32px)'
+            : '0',
         }}>
           <AnimatePresence mode="wait">
             <Routes location={location} key={location.pathname.split('/')[1]}>
@@ -83,17 +87,22 @@ function AppInner() {
       {currentTrack && (
         <div style={{
           position: 'fixed',
-          bottom: 16,
-          left: 16,
-          right: 16,
+          bottom: miniPlayerTheme === 'docked' ? 0 : miniPlayerTheme === 'vinyl' ? 24 : 24,
+          left: miniPlayerTheme === 'docked' ? 0 : 0,
+          right: miniPlayerTheme === 'docked' ? 0 : 0,
           zIndex: 200,
+          display: 'flex',
+          justifyContent: miniPlayerTheme === 'docked' ? 'stretch' : 'center',
+          pointerEvents: 'none',
         }}>
-          <MiniPlayer />
+          <div style={{ pointerEvents: 'auto', width: miniPlayerTheme === 'docked' ? '100%' : 'auto' }}>
+            <MiniPlayer />
+          </div>
         </div>
       )}
       <AnimatePresence>
         {showFullPlayer && (
-          playerTheme === 'spotify' 
+          playerTheme === 'spotify'
             ? <SpotifyPlayer key="full-player" />
             : <FullPlayer key="full-player" />
         )}

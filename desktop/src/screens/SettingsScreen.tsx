@@ -77,6 +77,17 @@ function AppearanceSection() {
   return (
     <div className={styles.sectionContent}>
       <h3 className={styles.sectionHeader}>Theme</h3>
+      <SettingRow label="Mini Player Theme" desc="Choose the layout of the mini player">
+        <select
+          className={styles.select}
+          value={s.miniPlayerTheme}
+          onChange={e => s.setMiniPlayerTheme(e.target.value as any)}
+        >
+          <option value="floating">Floating Pill</option>
+          <option value="vinyl">Vinyl Art</option>
+          <option value="docked">Docked Bottom</option>
+        </select>
+      </SettingRow>
       <SettingRow label="Dynamic Color" desc="Extract accent color from album art">
         <Toggle value={s.dynamicColor} onChange={s.setDynamicColor} />
       </SettingRow>
