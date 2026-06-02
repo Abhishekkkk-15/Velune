@@ -115,7 +115,7 @@ export default function ArtistScreen() {
                 ) : (
                   <div className={styles.cardRow}>
                     {section.items.map((item, j) => (
-                      <MediaCard key={`${item.id}-${j}`} item={item} />
+                      <MediaCard key={`${item.id}-${j}`} item={item} contextItems={section.items} />
                     ))}
                   </div>
                 )}

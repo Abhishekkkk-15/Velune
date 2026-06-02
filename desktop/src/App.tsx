@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import NavigationBar from './components/NavigationBar'
 import MiniPlayer from './components/MiniPlayer'
 import FullPlayer from './components/FullPlayer'
+import SpotifyPlayer from './components/SpotifyPlayer'
 import WidgetPlayer from './components/WidgetPlayer'
 import Queue from './components/Queue'
 import HomeScreen from './screens/HomeScreen'
@@ -15,15 +16,17 @@ import ArtistScreen from './screens/ArtistScreen'
 import AlbumScreen from './screens/AlbumScreen'
 import PlaylistScreen from './screens/PlaylistScreen'
 import SettingsScreen from './screens/SettingsScreen'
+import CustomTitleBar from './components/CustomTitleBar'
 import { usePlayerStore } from './store/playerStore'
 import { useSettingsStore } from './store/settingsStore'
 import { useAudio } from './hooks/useAudio'
 import { useScrobble } from './hooks/useScrobble'
 import { useColorExtractor } from './hooks/useColorExtractor'
+import { api } from './api/client'
 
 function AppInner() {
   const { currentTrack, showFullPlayer, showQueue, isPlaying, progress, duration, isWidgetMode } = usePlayerStore()
-  const { accentColor } = useSettingsStore()
+  const { accentColor, playerTheme } = useSettingsStore()
   useAudio()
   useScrobble(currentTrack, isPlaying, progress, duration)
   useColorExtractor(currentTrack?.thumbnail)
@@ -31,6 +34,12 @@ function AppInner() {
   useEffect(() => {
     document.documentElement.style.setProperty('--primary', accentColor)
   }, [accentColor])
+
+  useEffect(() => {
+    // Enforce cache limit on app startup
+    const maxBytes = useSettingsStore.getState().maxCacheSize * 1024 * 1024
+    api.enforceCacheLimit(maxBytes).catch(() => {})
+  }, [])
 
   const location = useLocation()
 
@@ -46,6 +55,7 @@ function AppInner() {
       overflow: 'hidden',
       background: 'var(--background)',
     }}>
+      <CustomTitleBar />
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <NavigationBar />
         <main style={{
@@ -82,7 +92,11 @@ function AppInner() {
         </div>
       )}
       <AnimatePresence>
-        {showFullPlayer && <FullPlayer key="full-player" />}
+        {showFullPlayer && (
+          playerTheme === 'spotify' 
+            ? <SpotifyPlayer key="full-player" />
+            : <FullPlayer key="full-player" />
+        )}
       </AnimatePresence>
       <AnimatePresence>
         {showQueue && <Queue key="queue" />}

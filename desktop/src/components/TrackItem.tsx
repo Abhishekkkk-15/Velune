@@ -35,9 +35,9 @@ export default function TrackItem({ track, index, queue, showAlbum, showArt = tr
     setDownloadStatus, removeDownload, getDownloadStatus,
   } = useLibraryStore()
 
-  const isActive  = currentTrack?.id === track.id
-  const liked     = isLiked(track.id)
-  const dlStatus  = getDownloadStatus(track.id)
+  const isActive = currentTrack?.id === track.id
+  const liked = isLiked(track.id)
+  const dlStatus = getDownloadStatus(track.id)
   const thumbnail = proxyImage(track.thumbnail)
 
   const toTrack = (t: YTTrack) => ({
@@ -54,7 +54,7 @@ export default function TrackItem({ track, index, queue, showAlbum, showArt = tr
   const handleDownload = async (e: React.MouseEvent) => {
     e.stopPropagation()
     if (dlStatus === 'done') {
-      await api.deleteDownload(track.id).catch(() => {})
+      await api.deleteDownload(track.id).catch(() => { })
       removeDownload(track.id)
       return
     }
@@ -122,15 +122,15 @@ export default function TrackItem({ track, index, queue, showAlbum, showArt = tr
           {hovered
             ? <button onClick={handlePlay} className={styles.playInline}><Play size={14} fill="var(--on-surface)" color="var(--on-surface)" /></button>
             : isActive
-            ? <span className={styles.activeIdx}>♫</span>
-            : <span className={styles.idx}>{index + 1}</span>
+              ? <span className={styles.activeIdx}>♫</span>
+              : <span className={styles.idx}>{index + 1}</span>
           }
         </div>
       )}
 
       <div className={styles.info}>
         <div className={`${styles.title} ${isActive ? styles.titleActive : ''}`}>{track.title}</div>
-        <div className={styles.artist}>{track.artists.map(a => a.name).join(', ')}</div>
+        <div className={styles.artist}>{(track.artists || []).map(a => a.name).join(', ')}</div>
       </div>
 
       {showAlbum && (
@@ -159,8 +159,8 @@ export default function TrackItem({ track, index, queue, showAlbum, showArt = tr
             {dlStatus === 'done'
               ? <CheckCircle size={16} color="var(--primary)" />
               : dlStatus === 'downloading'
-              ? <Loader2 size={16} color="var(--on-surface-variant)" className={styles.spin} />
-              : <Download size={16} color="var(--on-surface-variant)" />}
+                ? <Loader2 size={16} color="var(--on-surface-variant)" className={styles.spin} />
+                : <Download size={16} color="var(--on-surface-variant)" />}
           </button>
         )}
 

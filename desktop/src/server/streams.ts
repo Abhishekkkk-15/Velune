@@ -9,13 +9,213 @@ Platform.shim.eval = async (data) => {
   return new Function(data.output)()
 }
 
+// ─── yt-dlp streaming ─────────────────────────────────────────────────────────
+
+const YTDLP_URL_CACHE = new Map<string, { url: string; mime: string; duration?: number; expires: number }>()
+const YTDLP_URL_TTL_MS = 5 * 60 * 1000
+
+function runYtDlp(args: string[]): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const proc = spawn('yt-dlp', args, { stdio: ['ignore', 'pipe', 'pipe'] })
+    let stdout = ''
+    let stderr = ''
+    proc.stdout.on('data', (d: Buffer) => { stdout += d.toString() })
+    proc.stderr.on('data', (d: Buffer) => { stderr += d.toString() })
+    proc.on('close', (code) => {
+      if (code === 0) resolve(stdout.trim())
+      else reject(new Error(stderr.trim() || `yt-dlp exited ${code}`))
+    })
+    proc.on('error', (e) => reject(new Error(`yt-dlp not found: ${e.message}`)))
+  })
+}
+
+/**
+ * Resolve an HLS m3u8 manifest URL for a YouTube video using yt-dlp.
+ * Prefers format 234 (high-quality audio HLS), falls back to 233 (low).
+ * Results are cached for YTDLP_URL_TTL_MS.
+ */
+interface YtDlpAttempt {
+  inputUrl: string
+  format: string
+  extraArgs: string[]
+  label: string
+}
+
+async function runYtDlpAttempt(attempt: YtDlpAttempt): Promise<{ url: string; duration?: number }> {
+  const raw = await runYtDlp([
+    '--print', 'urls',
+    '--print', '%(duration)s',
+    '-f', attempt.format,
+    '--no-playlist',
+    '--no-warnings',
+    ...attempt.extraArgs,
+    attempt.inputUrl,
+  ])
+  const lines = raw.split('\n').map(l => l.trim()).filter(Boolean)
+  const url = lines[0]
+  if (!url || url.startsWith('WARNING') || url.startsWith('ERROR') || !url.startsWith('http')) {
+    throw new Error(`yt-dlp returned no URL: ${url?.substring(0, 100)}`)
+  }
+  const durStr = lines[1]
+  const duration = durStr && !isNaN(parseFloat(durStr)) ? parseFloat(durStr) : undefined
+  return { url, duration }
+}
+
+export async function resolveYtDlpUrl(videoId: string): Promise<{ url: string; mime: string; duration?: number }> {
+  const now = Date.now()
+  const cached = YTDLP_URL_CACHE.get(videoId)
+  if (cached && cached.expires > now) return { url: cached.url, mime: cached.mime, duration: cached.duration }
+
+  // Ordered list of attempts:
+  // 1. HLS (m3u8) formats 234/233 — no POT required, works for most YT videos
+  // 2. HTTPS DASH format 140 with android+missing_pot — works for YT Music exclusives
+  //    (GVS PO Token warning fires but CDN actually serves the audio without it)
+  const attempts: YtDlpAttempt[] = [
+    {
+      inputUrl: `https://music.youtube.com/watch?v=${videoId}`,
+      format: '234/233',
+      extraArgs: [],
+      label: 'ytmusic/hls',
+    },
+    {
+      inputUrl: `https://www.youtube.com/watch?v=${videoId}`,
+      format: '234/233',
+      extraArgs: [],
+      label: 'youtube/hls',
+    },
+    {
+      inputUrl: `https://music.youtube.com/watch?v=${videoId}`,
+      format: '140/139',
+      extraArgs: [
+        '--extractor-args', 'youtube:player_client=android',
+        '--extractor-args', 'youtube:formats=missing_pot',
+      ],
+      label: 'ytmusic/dash-android',
+    },
+    {
+      inputUrl: `https://www.youtube.com/watch?v=${videoId}`,
+      format: '140/139',
+      extraArgs: [
+        '--extractor-args', 'youtube:player_client=android',
+        '--extractor-args', 'youtube:formats=missing_pot',
+      ],
+      label: 'youtube/dash-android',
+    },
+  ]
+
+  let url: string | null = null
+  let duration: number | undefined
+  let lastErr = ''
+
+  for (const attempt of attempts) {
+    try {
+      const result = await runYtDlpAttempt(attempt)
+      url = result.url
+      duration = result.duration
+      // For DASH URLs, also try extracting duration from the URL's dur= parameter
+      if (!duration) {
+        const durMatch = url.match(/[?&]dur=([0-9.]+)/)
+        if (durMatch) duration = parseFloat(durMatch[1])
+      }
+      console.log(`[yt-dlp] ${videoId} resolved via ${attempt.label}${duration ? ` (${Math.round(duration)}s)` : ''}`)
+      break
+    } catch (e: any) {
+      lastErr = e.message
+      console.warn(`[yt-dlp] ${attempt.label} failed for ${videoId}: ${e.message.substring(0, 120)}`)
+    }
+  }
+
+  if (!url) throw new Error(`yt-dlp all attempts failed for ${videoId}: ${lastErr}`)
+
+  const mime = 'audio/mpeg'
+  YTDLP_URL_CACHE.set(videoId, { url, mime, duration, expires: now + YTDLP_URL_TTL_MS })
+  return { url, mime, duration }
+}
+
+export function invalidateYtDlpCache(videoId: string): void {
+  YTDLP_URL_CACHE.delete(videoId)
+}
+
+/**
+ * Spawn ffmpeg to convert an HLS m3u8 URL to a streaming MP3 pipe.
+ * MP3 (audio/mpeg) is the most universally-supported streaming format for
+ * browser <audio> elements — works without Content-Length or range requests.
+ * For HLS: ffmpeg fetches the m3u8 + segments directly.
+ */
+export function spawnFfmpegHlsStream(m3u8Url: string): ReturnType<typeof spawn> {
+  return spawn('ffmpeg', [
+    '-reconnect', '1',
+    '-reconnect_streamed', '1',
+    '-reconnect_delay_max', '5',
+    '-i', m3u8Url,
+    '-vn',
+    '-c:a', 'libmp3lame',
+    '-b:a', '128k',
+    '-f', 'mp3',
+    'pipe:1',
+  ], { stdio: ['ignore', 'pipe', 'pipe'] })
+}
+
+/**
+ * Spawn ffmpeg reading from stdin, for YouTube DASH (format 140/139) URLs
+ * that require bounded Range requests. YouTube CDN serves format 140 only via
+ * bounded Range (bytes=N-M) requests — a full GET or unbounded bytes=0- returns
+ * HTTP 403. We chunk-fetch using Node.js fetch() with 480KB Range windows and
+ * pipe each chunk to ffmpeg's stdin, which converts m4a → MP3.
+ *
+ * Returns the spawned ffmpeg ChildProcess. The caller must pipe proc.stdout to
+ * the HTTP response. The chunk-fetch loop runs in the background.
+ */
+export function spawnFfmpegDashStream(dashUrl: string): ReturnType<typeof spawn> {
+  const proc = spawn('ffmpeg', [
+    '-i', 'pipe:0',
+    '-vn',
+    '-c:a', 'libmp3lame',
+    '-b:a', '128k',
+    '-f', 'mp3',
+    'pipe:1',
+  ], { stdio: ['pipe', 'pipe', 'pipe'] })
+
+  const clenMatch = dashUrl.match(/[?&]clen=(\d+)/)
+  const totalBytes = clenMatch ? parseInt(clenMatch[1]) : 8_000_000
+  const CHUNK = 480_000 // 480KB — well within YouTube CDN's ~512KB bounded Range limit
+
+  ;(async () => {
+    try {
+      for (let start = 0; start < totalBytes; start += CHUNK) {
+        const end = Math.min(start + CHUNK - 1, totalBytes - 1)
+        const resp = await fetch(dashUrl, {
+          headers: { 'Range': `bytes=${start}-${end}` },
+        })
+        if (!resp.ok) throw new Error(`CDN ${resp.status} at bytes=${start}-${end}`)
+        const buf = Buffer.from(await resp.arrayBuffer())
+        // Respect backpressure on ffmpeg stdin
+        const ok = proc.stdin!.write(buf)
+        if (!ok) await new Promise<void>(r => proc.stdin!.once('drain', r))
+      }
+      proc.stdin!.end()
+    } catch (e: any) {
+      proc.stdin!.destroy(e)
+      proc.kill('SIGKILL')
+    }
+  })()
+
+  return proc
+}
+
 let youtubeInstance: Innertube | null = null
 
 export async function getYoutube(): Promise<Innertube> {
   if (!youtubeInstance) {
-    youtubeInstance = await Innertube.create()
+    youtubeInstance = await Innertube.create({
+      generate_session_locally: true,
+    })
   }
   return youtubeInstance
+}
+
+export function resetYoutubeInstance(): void {
+  youtubeInstance = null
 }
 
 // ─── Stream URL Cache (URL-level, short TTL) ──────────────────────────────────
@@ -114,12 +314,12 @@ export async function resolveStreamInfo(videoId: string): Promise<{
   const safeChoose = (info: any, opts: any) => {
     try { return info.chooseFormat(opts) } catch { return null }
   }
-  const CLIENTS = ['IOS', 'ANDROID', 'WEB'] as const
+  const CLIENTS = ['ANDROID_TESTSUITE', 'TV_EMBEDDED', 'IOS', 'ANDROID', 'WEB'] as const
   const errors: string[] = []
 
   for (const client of CLIENTS) {
     try {
-      const info = await youtube.getInfo(videoId, { client })
+      const info = await youtube.getInfo(videoId, { client } as any)
 
       const fmt =
         safeChoose(info, { itag: 141 }) ??   // AAC 256 kbps
@@ -145,10 +345,10 @@ export async function resolveStreamInfo(videoId: string): Promise<{
 
 export function getCacheStats(): { count: number; sizeBytes: number } {
   try {
-    ensureCacheDir()
-    const files = fs.readdirSync(DISK_CACHE_DIR)
+    ensureAudioCacheDir()
+    const files = fs.readdirSync(AUDIO_CACHE_DIR).filter(f => f.endsWith('.m4a'))
     const sizeBytes = files.reduce((acc, f) => {
-      try { return acc + fs.statSync(path.join(DISK_CACHE_DIR, f)).size }
+      try { return acc + fs.statSync(path.join(AUDIO_CACHE_DIR, f)).size }
       catch { return acc }
     }, 0)
     return { count: files.length, sizeBytes }
@@ -173,16 +373,15 @@ export async function resolveStreamUrl(videoId: string): Promise<{ url: string; 
     try { return info.chooseFormat(opts) } catch { return null }
   }
 
-  // Try multiple clients — different clients expose different adaptive formats.
-  // IOS tends to have the most reliable audio-only streams.
-  const CLIENTS = ['IOS', 'ANDROID', 'WEB'] as const
+  // Try multiple clients — ANDROID_TESTSUITE returns un-ciphered URLs, best for cloud.
+  const CLIENTS = ['ANDROID_TESTSUITE', 'TV_EMBEDDED', 'IOS', 'ANDROID', 'WEB'] as const
   const errors: string[] = []
 
   const youtube = await getYoutube()
 
   for (const client of CLIENTS) {
     try {
-      const info = await youtube.getInfo(videoId, { client })
+      const info = await youtube.getInfo(videoId, { client } as any)
 
       // ── Priority 1: audio-only AAC m4a (no ffmpeg needed) ─────────────────
       const audioOnly =
@@ -324,9 +523,9 @@ export async function streamAudio(
   const youtube = await getYoutube()
   const safeChoose = (i: any, o: any) => { try { return i.chooseFormat(o) } catch { return null } }
 
-  for (const client of ['ANDROID', 'WEB', 'IOS'] as const) {
+  for (const client of ['ANDROID_TESTSUITE', 'TV_EMBEDDED', 'IOS', 'ANDROID', 'WEB'] as const) {
     try {
-      const freshInfo = await youtube.getInfo(videoId, { client })
+      const freshInfo = await youtube.getInfo(videoId, { client } as any)
 
       // Update STREAM_INFO_CACHE with the fresh info
       const fmt =
@@ -353,7 +552,7 @@ export async function streamAudio(
     }
   }
 
-  throw new Error(`All stream attempts (3 clients × 2 formats) failed for ${videoId}`)
+  throw new Error(`All stream attempts (5 clients × 2 formats) failed for ${videoId}`)
 }
 
 // ─── Audio Cache (pure audio, long TTL) ───────────────────────────────────────
@@ -378,6 +577,39 @@ function clearAudioCache(): void {
       }
     }
   } catch {}
+}
+
+export function enforceCacheLimit(maxBytes: number): void {
+  try {
+    ensureAudioCacheDir()
+    const files = fs.readdirSync(AUDIO_CACHE_DIR).filter(f => f.endsWith('.m4a'))
+    
+    // Get file sizes and modified times
+    const fileStats = files.map(f => {
+      const p = path.join(AUDIO_CACHE_DIR, f)
+      const stat = fs.statSync(p)
+      return { path: p, size: stat.size, mtime: stat.mtimeMs }
+    })
+    
+    let totalSize = fileStats.reduce((acc, f) => acc + f.size, 0)
+    
+    if (totalSize <= maxBytes) return
+    
+    // Sort oldest first
+    fileStats.sort((a, b) => a.mtime - b.mtime)
+    
+    for (const f of fileStats) {
+      if (totalSize <= maxBytes) break
+      try {
+        fs.unlinkSync(f.path)
+        totalSize -= f.size
+      } catch (e) {
+        console.error(`Failed to delete cache file ${f.path}:`, e)
+      }
+    }
+  } catch (e) {
+    console.error('Failed to enforce cache limit:', e)
+  }
 }
 
 /**

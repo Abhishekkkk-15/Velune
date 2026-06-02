@@ -20,7 +20,7 @@ try {
 import express from 'express'
 import cors from 'cors'
 import { InnerTube } from './innertube'
-import { ensureAudioCached, resolveStreamUrl, resolveStreamInfo, streamAudio, invalidateStreamCache, clearStreamCache, getCacheStats } from './streams'
+import { ensureAudioCached, resolveStreamUrl, resolveStreamInfo, streamAudio, invalidateStreamCache, clearStreamCache, getCacheStats, enforceCacheLimit, resolveYtDlpUrl, invalidateYtDlpCache, spawnFfmpegHlsStream, spawnFfmpegDashStream, getAudioCachePath } from './streams'
 import {
   startDownload, isDownloaded, getDownloadPath, getDownloadStatus,
   getAllDownloadedIds, getDownloadStats, deleteDownload, clearAllDownloads,
@@ -98,114 +98,159 @@ app.get('/api/next', async (req, res) => {
   } catch (e: any) { res.status(500).json({ error: e.message }) }
 })
 
+// YouTube video IDs are exactly 11 chars (alphanumeric + _ + -).
+// Channel IDs start with "UC" and are 24 chars. Playlist IDs start with
+// PL/RD/OL etc. Reject non-video IDs immediately so we never call getInfo
+// on a browse ID and waste 3 client retries.
+function isVideoId(id: string): boolean {
+  return /^[-_a-zA-Z0-9]{11}$/.test(id)
+}
+
 app.get('/api/stream', async (req, res) => {
   try {
     const id = String(req.query.videoId || '')
     if (!id) return res.status(400).json({ error: 'videoId required' })
+    if (!isVideoId(id)) {
+      console.warn(`[API /api/stream] rejected non-video ID: ${id}`)
+      return res.status(404).json({ error: `Not a playable video ID: ${id}` })
+    }
 
     if (isDownloaded(id)) {
       const stat = fs.statSync(getDownloadPath(id))
       return res.json({ url: `/api/offline/${id}`, offline: true, size: stat.size })
     }
 
-    // Return the direct CDN URL so the BROWSER fetches it using the user's IP.
-    // Replit's server IP is blocked by YouTube CDN (403), but the user's browser
-    // IP is not. The client audio element fetches CDN directly with crossOrigin
-    // set to 'anonymous' — YouTube CDN returns Access-Control-Allow-Origin: *,
-    // which satisfies MediaElementAudioSourceNode's CORS requirement.
-    const { url } = await resolveStreamUrl(id)
-    res.json({ url, offline: false })
+    const cachedPath = getAudioCachePath(id)
+    if (fs.existsSync(cachedPath)) {
+      const stat = fs.statSync(cachedPath)
+      return res.json({ url: `/api/cached/${id}`, offline: false, size: stat.size })
+    }
+
+    // Resolve yt-dlp URL eagerly to get the track duration. Results are cached
+    // (5 min TTL) so after the first play, subsequent calls return instantly.
+    // Duration is sent to the frontend so the player can display it immediately
+    // even though the streaming MP3 has no Content-Length.
+    let duration: number | undefined
+    try {
+      const resolved = await resolveYtDlpUrl(id)
+      duration = resolved.duration
+    } catch {
+      // Warm the youtubei cache as fallback
+      resolveStreamUrl(id).catch(() => {})
+    }
+    res.json({ url: `/api/stream/proxy/${id}`, offline: false, duration })
   } catch (e: any) {
     console.error(`[API ERROR /api/stream] Video ID: ${req.query.videoId}`, e)
     res.status(500).json({ error: e.message })
   }
 })
 
-app.get('/api/stream/proxy/:videoId', async (req, res) => {
-  try {
-    const { videoId } = req.params
+// IOS client User-Agent — matches the client type used by resolveStreamUrl
+const IOS_UA = 'com.google.ios.youtube/19.45.4 (iPhone16,2; U; CPU iOS 18_1_0 like Mac OS X)'
 
-    // Parse Range header — browsers send this even for initial loads (bytes=0-)
-    let rangeStart = 0
-    let rangeEnd = 0
-    let hasRange = false
-    const rangeHeader = req.headers['range'] as string | undefined
+app.get('/api/stream/proxy/:videoId', async (req, res) => {
+  const { videoId } = req.params
+  const rangeHeader = req.headers['range'] as string | undefined
+
+  // ── Primary: yt-dlp + ffmpeg (HLS→MP3 or DASH→MP3, bypasses CDN restrictions) ──
+  try {
+    let { url: m3u8Url } = await resolveYtDlpUrl(videoId)
+
+    // Detect DASH URLs (format 140/139): googlevideo.com URLs with clen= parameter.
+    // DASH URLs require bounded Range requests — ffmpeg's full GET gets HTTP 403.
+    // Use spawnFfmpegDashStream() which fetches in 480KB chunks from Node.js and
+    // pipes to ffmpeg stdin, bypassing ffmpeg's HTTP stack entirely.
+    const isDash = m3u8Url.includes('googlevideo.com') && /[?&]clen=\d+/.test(m3u8Url)
+    const ffmpegProc = isDash ? spawnFfmpegDashStream(m3u8Url) : spawnFfmpegHlsStream(m3u8Url)
+
+    // Give ffmpeg 3 s to start producing data; if stderr shows a fatal error
+    // before stdout emits anything, fall through to the youtubei fallback.
+    let started = false
+    let ffmpegError = ''
+
+    ffmpegProc.stderr!.on('data', (d: Buffer) => {
+      const txt = d.toString()
+      // Accumulate errors only — ffmpeg normally writes progress to stderr
+      if (/error|invalid|failed|no such file/i.test(txt)) ffmpegError += txt
+    })
+
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error('ffmpeg start timeout')), 8000)
+      ffmpegProc.stdout!.once('data', () => {
+        clearTimeout(timeout)
+        started = true
+        resolve()
+      })
+      ffmpegProc.on('error', (e) => { clearTimeout(timeout); reject(e) })
+      ffmpegProc.on('close', (code) => {
+        clearTimeout(timeout)
+        if (!started) reject(new Error(`ffmpeg exited ${code}: ${ffmpegError}`))
+      })
+    })
+
+    res.setHeader('Content-Type', 'audio/mpeg')
+    res.setHeader('Access-Control-Allow-Origin', '*')
+    res.setHeader('X-Content-Type-Options', 'nosniff')
+
+    console.log(`[Proxy/yt-dlp+ffmpeg] ${videoId} → HLS→AAC stream started`)
+    ffmpegProc.stdout!.pipe(res)
+    req.on('close', () => ffmpegProc.kill('SIGKILL'))
+    ffmpegProc.on('close', () => { if (!res.writableEnded) res.end() })
+    return
+  } catch (ytdlpErr: any) {
+    console.warn(`[Proxy/yt-dlp] failed for ${videoId}: ${ytdlpErr.message} — trying youtubei fallback`)
+    invalidateYtDlpCache(videoId)
+  }
+
+  // ── Fallback: youtubei.js streamAudio ─────────────────────────────────────
+  try {
+    invalidateStreamCache(videoId)
+
+    let downloadRange: { start: number; end: number } | undefined
     if (rangeHeader) {
       const m = rangeHeader.match(/bytes=(\d+)-(\d*)/)
-      if (m) {
-        rangeStart = Number(m[1])
-        rangeEnd = m[2] ? Number(m[2]) : 0  // 0 = open-ended ("to the end")
-        hasRange = true
+      if (m && Number(m[1]) > 0) {
+        downloadRange = { start: Number(m[1]), end: m[2] ? Number(m[2]) : 0 }
       }
     }
 
-    // Resolve metadata (cached 5 min) — gives us Content-Length + MIME type.
-    const { contentLength, mimeType } = await resolveStreamInfo(videoId)
-
-    // Only restrict the download range when seeking beyond the start.
-    // For bytes=0- (browser initial load) we must NOT pass range:{start:0,end:0}
-    // to info.download() — youtubei.js turns that into &range=0-0 which fetches
-    // exactly 1 byte, causing MEDIA_ELEMENT_ERROR: Format error in the browser.
-    let downloadRange: { start: number; end: number } | undefined
-    if (hasRange && rangeStart > 0) {
-      const end = (rangeEnd > rangeStart) ? rangeEnd : (contentLength > 0 ? contentLength - 1 : 0)
-      downloadRange = { start: rangeStart, end }
-    }
-
-    // Stream via youtubei.js info.download() — carries session auth internally.
-    // Direct node-fetch of the CDN URL always 403s from Replit.
     const webStream = await streamAudio(videoId, downloadRange)
-
-    const ct = mimeType.startsWith('audio/') ? mimeType : 'audio/mp4'
-    res.setHeader('Content-Type', ct)
-    res.setHeader('Accept-Ranges', 'bytes')
-
-    const declaredLength = contentLength > 0 ? contentLength : 0
-    if (hasRange && declaredLength > 0) {
-      const end = (rangeEnd > 0 && rangeEnd > rangeStart) ? rangeEnd : declaredLength - 1
-      res.setHeader('Content-Range', `bytes ${rangeStart}-${end}/${declaredLength}`)
-      // Omit Content-Length — a mismatch between declared and actual bytes causes
-      // the browser to truncate the stream and report MEDIA_ELEMENT_ERROR: Format error.
-      // Chunked transfer encoding is safer for proxied streams.
-      res.status(206)
-    }
-    // Do NOT set Content-Length for the body — use chunked transfer.
-    // If Content-Length is wrong (even by 1 byte) the browser truncates or
-    // stalls, producing a format error.  The audio element works fine without it.
-
-    console.log(`[Proxy] ${videoId} Range:${rangeHeader||'none'} status:${hasRange?206:200} mime:${ct} declaredLen:${declaredLength}`)
-
-    // Convert Web ReadableStream → Node.js Readable and pipe to the response
     const { Readable } = await import('stream')
     const nodeStream = Readable.fromWeb(webStream as any)
-    let bytesSent = 0
-    let firstChunkLogged = false
-    nodeStream.on('data', (chunk: Buffer) => {
-      bytesSent += chunk.length
-      if (!firstChunkLogged) {
-        firstChunkLogged = true
-        // Log first 16 bytes as hex — valid MP4 starts with box-size(4) + 'ftyp'(4)
-        const hex = chunk.slice(0, 16).toString('hex').match(/.{2}/g)?.join(' ')
-        const ascii = chunk.slice(4, 12).toString('ascii').replace(/[^\x20-\x7e]/g, '.')
-        console.log(`[Proxy] ${videoId} first bytes: ${hex} | ascii[4-12]: "${ascii}"`)
-      }
-    })
-    nodeStream.on('end', () => console.log(`[Proxy] ${videoId} stream ended, bytesSent:${bytesSent} declaredLen:${declaredLength}`))
-    nodeStream.on('error', (e) => console.error(`[Proxy] ${videoId} stream error:`, e.message))
+    res.setHeader('Content-Type', 'audio/mp4')
+    res.setHeader('Accept-Ranges', 'bytes')
+    res.setHeader('Access-Control-Allow-Origin', '*')
+    if (rangeHeader) res.status(206)
+    console.log(`[Proxy/youtubei] ${videoId} → streamAudio OK range:${rangeHeader || 'none'}`)
     nodeStream.pipe(res)
     req.on('close', () => nodeStream.destroy())
   } catch (e: any) {
-    console.error(`[Proxy Error]`, e)
-    if (!res.headersSent) res.status(500).json({ error: e.message })
+    console.error(`[Proxy Error] ${videoId}:`, e.message)
+    if (!res.headersSent) {
+      const isUnavailable = /unavailable|not available|private|age.?restrict/i.test(e.message)
+      res.status(isUnavailable ? 404 : 500).json({ error: e.message })
+    }
   }
 })
 
 app.get('/api/stream/prefetch/:videoId', (req, res) => {
   const { videoId } = req.params
-  resolveStreamInfo(videoId).catch((e) => {
+  const { maxCacheMB } = req.query
+  ensureAudioCached(videoId).then(() => {
+    if (maxCacheMB) {
+      enforceCacheLimit(Number(maxCacheMB) * 1024 * 1024)
+    }
+  }).catch((e) => {
     console.warn(`[Prefetch] failed for ${videoId}: ${e.message}`)
   })
   res.json({ ok: true })
+})
+
+app.get('/api/cached/:videoId', (req, res) => {
+  const p = getAudioCachePath(req.params.videoId)
+  if (!fs.existsSync(p)) return res.status(404).json({ error: 'Not cached' })
+  res.setHeader('Content-Type', 'audio/mp4')
+  res.sendFile(p)
 })
 
 app.get('/api/offline/:videoId', (req, res) => {
@@ -315,7 +360,16 @@ app.post('/api/discord/clear', async (req, res) => {
 })
 
 app.get('/api/cache/stats', (req, res) => { res.json(getCacheStats()) })
-app.post('/api/cache/clear', (req, res) => { clearStreamCache(); res.json({ ok: true }) })
+app.post('/api/cache/clear', (req, res) => {
+  clearStreamCache()
+  res.json({ ok: true })
+})
+
+app.post('/api/cache/enforce', (req, res) => {
+  const maxBytes = req.body.maxBytes
+  if (typeof maxBytes === 'number') enforceCacheLimit(maxBytes)
+  res.json({ ok: true })
+})
 
 app.get('/api/moods', async (req, res) => {
   try { res.json(await yt.getMoodAndGenres()) } catch (e: any) { res.status(500).json({ error: e.message }) }

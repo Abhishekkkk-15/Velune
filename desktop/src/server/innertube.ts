@@ -240,7 +240,9 @@ export class InnerTube {
 
   private async initYt() {
     if (this.yt) return
-    this.yt = await Innertube.create()
+    this.yt = await Innertube.create({
+      generate_session_locally: true,
+    })
 
     if (fs.existsSync(OAUTH_FILE)) {
       try {
@@ -295,7 +297,7 @@ export class InnerTube {
 
   async signout() {
     if (fs.existsSync(OAUTH_FILE)) fs.unlinkSync(OAUTH_FILE)
-    this.yt = await Innertube.create() // reset session
+    this.yt = await Innertube.create({ generate_session_locally: true })
     this.authCode = null
   }
 
@@ -366,8 +368,7 @@ export class InnerTube {
             : c.musicResponsiveListItemRenderer ? parseYTItem(c.musicResponsiveListItemRenderer)
               : null
         ).filter(Boolean)
-        const tLower = title.toLowerCase()
-        if (items.length > 0 && !tLower.includes('trending') && !tLower.includes('winner energy')) {
+        if (items.length > 0) {
           sections.push({ title, items })
         }
       }
@@ -377,8 +378,7 @@ export class InnerTube {
         const items = (grid.items || []).map((c: any) =>
           c.musicTwoRowItemRenderer ? parseTwoRowItem(c.musicTwoRowItemRenderer) : null
         ).filter(Boolean)
-        const tLower = title.toLowerCase()
-        if (items.length > 0 && !tLower.includes('trending') && !tLower.includes('winner energy')) {
+        if (items.length > 0) {
           sections.push({ title, items })
         }
       }

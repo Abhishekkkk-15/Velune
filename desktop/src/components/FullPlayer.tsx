@@ -14,7 +14,7 @@ import Visualizer from './Visualizer'
 import styles from './FullPlayer.module.css'
 
 function formatTime(s: number) {
-  if (!s || isNaN(s)) return '0:00'
+  if (!s || !isFinite(s) || isNaN(s)) return '--:--'
   const m = Math.floor(s / 60)
   const sec = Math.floor(s % 60)
   return `${m}:${sec.toString().padStart(2, '0')}`
@@ -51,7 +51,8 @@ export default function FullPlayer() {
     setProgress(pct * duration)
   }
 
-  const progressPct = duration > 0 ? (progress / duration) * 100 : 0
+  const finiteDuration = isFinite(duration) && duration > 0 ? duration : 0
+  const progressPct = finiteDuration > 0 ? (progress / finiteDuration) * 100 : 0
 
   const closeMore = () => {
     setMoreOpen(false)

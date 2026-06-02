@@ -86,7 +86,7 @@ export default function HomeScreen() {
               <h2 className={styles.sectionTitle}>{section.title}</h2>
               <div className={styles.cardRow}>
                 {section.items.map((item, j) => (
-                  <MediaCard key={`${item.id}-${j}`} item={item} />
+                  <MediaCard key={`${item.id}-${j}`} item={item} contextItems={section.items} />
                 ))}
               </div>
             </div>

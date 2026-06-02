@@ -45,7 +45,7 @@ export default function LibraryScreen() {
   const topArtists = (() => {
     const counts: Record<string, { name: string; count: number; thumbnail: string; id?: string }> = {}
     for (const track of history) {
-      for (const artist of track.artists) {
+      for (const artist of track.artists || []) {
         if (!counts[artist.name]) {
           counts[artist.name] = { name: artist.name, count: 0, thumbnail: track.thumbnail, id: artist.id }
         }
@@ -64,7 +64,7 @@ export default function LibraryScreen() {
         seen.set(key, {
           title: track.album,
           thumbnail: track.thumbnail,
-          artist: track.artists.map(a => a.name).join(', '),
+          artist: (track.artists || []).map(a => a.name).join(', '),
           count: 0,
         })
       }

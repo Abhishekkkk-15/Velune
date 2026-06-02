@@ -14,7 +14,6 @@ const SECTIONS = [
   { id: 'appearance', label: 'Appearance', icon: Palette },
   { id: 'player', label: 'Player', icon: Music2 },
   { id: 'equalizer', label: 'Equalizer', icon: Music2 },
-  { id: 'content', label: 'Content', icon: Globe },
   { id: 'storage', label: 'Storage', icon: HardDrive },
   { id: 'integrations', label: 'Integrations', icon: Puzzle },
   { id: 'about', label: 'About', icon: Info },
@@ -78,17 +77,8 @@ function AppearanceSection() {
   return (
     <div className={styles.sectionContent}>
       <h3 className={styles.sectionHeader}>Theme</h3>
-      <SettingRow label="Dark Mode" desc="Use dark color scheme">
-        <Toggle value={s.darkMode} onChange={s.setDarkMode} />
-      </SettingRow>
-      <SettingRow label="Pure Black" desc="OLED-friendly pure black backgrounds">
-        <Toggle value={s.pureBlack} onChange={s.setPureBlack} />
-      </SettingRow>
       <SettingRow label="Dynamic Color" desc="Extract accent color from album art">
         <Toggle value={s.dynamicColor} onChange={s.setDynamicColor} />
-      </SettingRow>
-      <SettingRow label="System Font" desc="Use system default font instead of Poppins">
-        <Toggle value={s.useSystemFont} onChange={s.setUseSystemFont} />
       </SettingRow>
 
       <h3 className={styles.sectionHeader}>Accent Color</h3>
@@ -119,9 +109,6 @@ function PlayerSection() {
       <SettingRow label="Gapless Playback" desc="Remove silence between tracks">
         <Toggle value={s.gaplessPlayback} onChange={s.setGapless} />
       </SettingRow>
-      <SettingRow label="Loudness Normalization" desc="Normalize volume across tracks">
-        <Toggle value={s.normalization} onChange={s.setNormalization} />
-      </SettingRow>
       <SettingRow label="Playback Speed" desc="Adjust playback rate">
         <Slider
           value={s.playbackSpeed}
@@ -129,6 +116,18 @@ function PlayerSection() {
           onChange={s.setPlaybackSpeed}
           format={v => `${v}×`}
         />
+      </SettingRow>
+
+      <h3 className={styles.sectionHeader}>Theme</h3>
+      <SettingRow label="Player Theme" desc="Choose between default vinyl or Spotify style">
+        <select
+          className={styles.select}
+          value={s.playerTheme}
+          onChange={e => s.setPlayerTheme(e.target.value as any)}
+        >
+          <option value="default">Default</option>
+          <option value="spotify">Spotify</option>
+        </select>
       </SettingRow>
 
       <h3 className={styles.sectionHeader}>Sleep Timer</h3>
@@ -156,20 +155,6 @@ function PlayerSection() {
           onChange={s.setCrossfade}
           format={v => v === 0 ? 'Off' : `${v}s`}
         />
-      </SettingRow>
-
-      <h3 className={styles.sectionHeader}>Audio Quality</h3>
-      <SettingRow label="Stream Quality">
-        <select
-          className={styles.select}
-          value={s.audioQuality}
-          onChange={e => s.setAudioQuality(e.target.value as any)}
-        >
-          <option value="auto">Auto</option>
-          <option value="high">High</option>
-          <option value="medium">Medium</option>
-          <option value="low">Low</option>
-        </select>
       </SettingRow>
     </div>
   )
@@ -207,8 +192,8 @@ function EqualizerSection() {
         ))}
       </div>
       <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end' }}>
-        <button 
-          className={styles.saveBtn} 
+        <button
+          className={styles.saveBtn}
           onClick={() => s.eqBands.forEach((_, i) => s.setEqBand(i, 0))}
         >
           Reset Flat
@@ -218,48 +203,6 @@ function EqualizerSection() {
   )
 }
 
-function ContentSection() {
-  const s = useSettingsStore()
-  return (
-    <div className={styles.sectionContent}>
-      <h3 className={styles.sectionHeader}>Region</h3>
-      <SettingRow label="Content Language" desc="Language for music recommendations">
-        <select
-          className={styles.select}
-          value={s.contentLanguage}
-          onChange={e => s.setContentLanguage(e.target.value)}
-        >
-          <option value="en">English</option>
-          <option value="es">Spanish</option>
-          <option value="fr">French</option>
-          <option value="de">German</option>
-          <option value="ja">Japanese</option>
-          <option value="ko">Korean</option>
-          <option value="hi">Hindi</option>
-          <option value="pt">Portuguese</option>
-        </select>
-      </SettingRow>
-      <SettingRow label="Content Region" desc="Country for music catalog">
-        <select
-          className={styles.select}
-          value={s.contentRegion}
-          onChange={e => s.setContentRegion(e.target.value)}
-        >
-          <option value="US">United States</option>
-          <option value="GB">United Kingdom</option>
-          <option value="CA">Canada</option>
-          <option value="AU">Australia</option>
-          <option value="IN">India</option>
-          <option value="JP">Japan</option>
-          <option value="KR">South Korea</option>
-          <option value="DE">Germany</option>
-          <option value="FR">France</option>
-          <option value="BR">Brazil</option>
-        </select>
-      </SettingRow>
-    </div>
-  )
-}
 
 function StorageSection() {
   const s = useSettingsStore()
@@ -268,7 +211,7 @@ function StorageSection() {
   const [cleared, setCleared] = useState(false)
 
   useEffect(() => {
-    api.getCacheStats().then(setStats).catch(() => {})
+    api.getCacheStats().then(setStats).catch(() => { })
   }, [])
 
   const handleClearCache = async () => {
@@ -300,7 +243,12 @@ function StorageSection() {
         </SettingRow>
       )}
       <SettingRow label="Maximum Cache Size" desc={`Up to ${s.maxCacheSize} MB`}>
-        <Slider value={s.maxCacheSize} min={256} max={4096} step={256} onChange={s.setMaxCacheSize} label="MB" />
+        <Slider value={s.maxCacheSize} min={256} max={4096} step={256} onChange={(val) => {
+          s.setMaxCacheSize(val)
+          api.enforceCacheLimit(val * 1024 * 1024).then(() => {
+            api.getCacheStats().then(setStats).catch(() => { })
+          }).catch(() => { })
+        }} label="MB" />
       </SettingRow>
       <SettingRow label="Clear Cache" desc="Remove all cached stream URL files">
         <button
@@ -531,7 +479,6 @@ const SECTION_MAP: Record<string, React.FC> = {
   appearance: AppearanceSection,
   player: PlayerSection,
   equalizer: EqualizerSection,
-  content: ContentSection,
   storage: StorageSection,
   integrations: IntegrationsSection,
   about: AboutSection,

@@ -150,7 +150,7 @@ export default function SearchScreen() {
           {filter && filter !== 'songs' && filter !== 'videos' && otherItems.length > 0 && (
             <div className={styles.cardGrid}>
               {otherItems.map((item, i) => (
-                <MediaCard key={`${item.id}-${i}`} item={item} />
+                <MediaCard key={`${item.id}-${i}`} item={item} contextItems={otherItems} />
               ))}
             </div>
           )}
@@ -165,8 +165,8 @@ export default function SearchScreen() {
                 ))}
               </div>
               <div className={styles.cardGrid}>
-                {data.items.filter(i => i.type !== 'song' && i.type !== 'video').map((item, j) => (
-                  <MediaCard key={`${item.id}-${j}`} item={item} />
+                {data.items.filter(i => i.type !== 'song' && i.type !== 'video').map((item, j, arr) => (
+                  <MediaCard key={`${item.id}-${j}`} item={item} contextItems={arr} />
                 ))}
               </div>
             </div>
@@ -184,7 +184,7 @@ export default function SearchScreen() {
               ) : (
                 <div className={styles.cardRow}>
                   {section.items.map((item, j) => (
-                    <MediaCard key={`${item.id}-${j}`} item={item} />
+                    <MediaCard key={`${item.id}-${j}`} item={item} contextItems={section.items} />
                   ))}
                 </div>
               )}

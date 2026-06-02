@@ -11,6 +11,7 @@ export function useAudio() {
   const sleepTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const crossfadingRef = useRef(false)
   const preloadedForRef = useRef<string | null>(null)
+  const lastSkipRef = useRef<number>(0)
 
   const {
     currentTrack, isPlaying, volume, isMuted, repeat, streamUrl, queue, queueIndex,
@@ -73,16 +74,22 @@ export function useAudio() {
       }
     }
 
-    const onDuration = () => setDuration(audio.duration || 0)
+    const onDuration = () => {
+      // Streaming MP3 (no Content-Length) reports Infinity — keep any
+      // server-supplied hint; only override when we get a finite value.
+      if (isFinite(audio.duration) && audio.duration > 0) {
+        setDuration(audio.duration)
+      }
+    }
     const onEnded = () => {
       audio.volume = isMuted ? 0 : volume
       crossfadingRef.current = false
       if (repeat === 'one') {
         audio.currentTime = 0
-        audio.play().catch(() => {})
+        audio.play().catch(() => { })
       } else {
         const nextAudio = nextAudioRef.current
-        if (settings.crossfadeDuration > 0 && nextAudio && nextAudio.src && !nextAudio.paused) {
+        if ((settings.crossfadeDuration > 0 || settings.gaplessPlayback) && nextAudio && nextAudio.src && nextAudio.readyState >= 2) {
           const temp = audioRef.current!
           audioRef.current = nextAudio
           nextAudioRef.current = temp
@@ -90,6 +97,8 @@ export function useAudio() {
           nextAudioRef.current.pause()
           nextAudioRef.current.src = ''
           preloadedForRef.current = null
+          audioRef.current.volume = isMuted ? 0 : volume
+          audioRef.current.play().catch(() => { })
           playNext()
         } else {
           playNext()
@@ -104,6 +113,18 @@ export function useAudio() {
       console.error('[Audio Error]', e, audio.error ? { code: audio.error.code, message: audio.error.message } : null)
       setIsLoading(false)
       setIsPlaying(false)
+      // Auto-skip unavailable tracks — rate-limited to prevent cascade when
+      // multiple tracks in a row fail (would otherwise crash React via rapid
+      // state updates). Only skip if we haven't skipped in the last 3 seconds.
+      const now = Date.now()
+      if (now - lastSkipRef.current > 3000) {
+        const { queue, queueIndex, repeat } = usePlayerStore.getState()
+        const hasNext = queueIndex < queue.length - 1
+        if (hasNext && repeat !== 'one') {
+          lastSkipRef.current = now
+          setTimeout(() => playNext(), 800)
+        }
+      }
     }
 
     audio.addEventListener('timeupdate', onTime)
@@ -137,20 +158,29 @@ export function useAudio() {
       nextAudioRef.current.src = ''
     }
     api.getStream(currentTrack.id)
-      .then(({ url }) => setStreamUrl(url))
+      .then(({ url, duration }) => {
+        setStreamUrl(url)
+        // Pre-seed duration from server so the display is correct right away
+        // even for streaming MP3s where audio.duration will be Infinity.
+        if (duration && isFinite(duration) && duration > 0) {
+          setDuration(duration)
+        }
+      })
       .catch(() => setIsLoading(false))
     addToHistory(currentTrack)
 
-    // Eagerly warm the server-side resolveStreamInfo cache for the next track
-    // so info.download() returns instantly (from cache) when the queue advances.
+    // Smart prefetch: eagerly download the actual audio for the next 2 tracks
+    // in the queue into the background cache.
     const { queue, queueIndex } = usePlayerStore.getState()
-    const nextTrack = queue[queueIndex + 1]
-    if (nextTrack) api.prefetchStream(nextTrack.id)
+    const maxCacheMB = useSettingsStore.getState().maxCacheSize
+    const upcoming = queue.slice(queueIndex + 1, queueIndex + 3)
+    upcoming.forEach(track => api.prefetchStream(track.id, maxCacheMB))
   }, [currentTrack?.id])
 
   useEffect(() => {
     const audio = audioRef.current
     if (!audio || !streamUrl) return
+    if (audio.src && audio.src.endsWith(streamUrl)) return
     audio.src = streamUrl
     audio.playbackRate = settings.playbackSpeed
     audio.load()
@@ -163,8 +193,8 @@ export function useAudio() {
     if (isPlaying) {
       // Resume AudioContext first — browsers suspend it until a user gesture.
       // Without this the audio loads but produces no output.
-      audioEngine.context?.resume().catch(() => {})
-      audio.play().catch(() => {})
+      audioEngine.context?.resume().catch(() => { })
+      audio.play().catch(() => { })
     } else {
       audio.pause()
     }
@@ -213,7 +243,7 @@ export function useAudio() {
 
   useEffect(() => {
     if (!currentTrack) {
-      if (settings.discordEnabled) api.discordClear().catch(() => {})
+      if (settings.discordEnabled) api.discordClear().catch(() => { })
       return
     }
     if (settings.discordEnabled && isPlaying) {
@@ -223,9 +253,9 @@ export function useAudio() {
         album: currentTrack.album,
         thumbnail: currentTrack.thumbnail,
         startTimestamp: Date.now(),
-      }).catch(() => {})
+      }).catch(() => { })
     } else if (settings.discordEnabled && !isPlaying) {
-      api.discordClear().catch(() => {})
+      api.discordClear().catch(() => { })
     }
   }, [currentTrack?.id, isPlaying, settings.discordEnabled])
 

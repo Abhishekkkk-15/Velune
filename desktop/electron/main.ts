@@ -41,8 +41,10 @@ function createWindow() {
     height: 780,
     minWidth: 900,
     minHeight: 600,
-    titleBarStyle: 'hiddenInset',
-    backgroundColor: '#0a0a0a',
+    frame: false,
+    transparent: true,
+    autoHideMenuBar: true,
+    backgroundColor: '#00000000',
     icon: path.join(__dirname, '..', 'assets', 'icon.png'),
     webPreferences: {
       preload: preloadPath,

@@ -15,7 +15,8 @@ export default function MiniPlayer() {
   if (!currentTrack) return null
 
   const liked = isLiked(currentTrack.id)
-  const progressPct = duration > 0 ? (progress / duration) * 100 : 0
+  const finiteDuration = isFinite(duration) && duration > 0 ? duration : 0
+  const progressPct = finiteDuration > 0 ? (progress / finiteDuration) * 100 : 0
   const thumbnail = proxyImage(currentTrack.thumbnail)
 
   const handleLike = (e: React.MouseEvent) => {
@@ -44,7 +45,7 @@ export default function MiniPlayer() {
         <div className={styles.info}>
           <div className={styles.title}>{currentTrack.title}</div>
           <div className={styles.artist}>
-            {currentTrack.artists.map(a => a.name).join(', ')}
+            {(currentTrack.artists ?? []).map(a => a.name).join(', ')}
           </div>
         </div>
 

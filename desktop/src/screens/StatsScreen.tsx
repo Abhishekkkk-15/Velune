@@ -18,7 +18,7 @@ export default function StatsScreen() {
 
   const artistCounts: Record<string, { name: string; count: number; thumbnail: string }> = {}
   for (const track of history) {
-    for (const artist of track.artists) {
+    for (const artist of track.artists || []) {
       if (!artistCounts[artist.name]) {
         artistCounts[artist.name] = { name: artist.name, count: 0, thumbnail: track.thumbnail }
       }

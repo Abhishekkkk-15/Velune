@@ -59,7 +59,7 @@ async function del<T>(path: string): Promise<T> {
 export function proxyImage(url: string | undefined): string {
   if (!url) return "";
   // Already a proxied relative or absolute path — return as-is
-  if (url.startsWith("/api/image")) return url;
+  if (url.startsWith("http://localhost:3001/api/image")) return url;
   if (url.startsWith("http://127.0.0.1:3001/api/image")) {
     // Rewrite legacy absolute URL to relative
     return url.replace("http://127.0.0.1:3001", "");
@@ -75,9 +75,9 @@ export function proxyImage(url: string | undefined): string {
   try {
     const parsed = new URL(url);
     if (ytHosts.some((h) => parsed.hostname.endsWith(h))) {
-      return `/api/image?url=${encodeURIComponent(url)}`;
+      return `http://localhost:3001/api/image?url=${encodeURIComponent(url)}`;
     }
-  } catch {}
+  } catch { }
   return url;
 }
 
@@ -179,7 +179,7 @@ export const api = {
     }),
 
   getStream: async (videoId: string) => {
-    const res = await get<{ url: string; offline?: boolean }>("/stream", {
+    const res = await get<{ url: string; offline?: boolean; duration?: number }>("/stream", {
       videoId,
     });
     // The server returns a path like /api/stream/proxy/:id or /api/offline/:id.
@@ -191,8 +191,9 @@ export const api = {
     return res;
   },
 
-  prefetchStream: (videoId: string): void => {
-    fetch(`${BASE}/stream/prefetch/${videoId}`).catch(() => {});
+  prefetchStream: (videoId: string, maxCacheMB?: number): void => {
+    const url = maxCacheMB ? `${BASE}/stream/prefetch/${videoId}?maxCacheMB=${maxCacheMB}` : `${BASE}/stream/prefetch/${videoId}`;
+    fetch(url).catch(() => { });
   },
 
   getLyrics: (title: string, artist: string, duration?: number) =>
@@ -218,6 +219,8 @@ export const api = {
     get<{ count: number; sizeBytes: number }>("/cache/stats"),
 
   clearCache: () => post("/cache/clear", {}),
+  
+  enforceCacheLimit: (maxBytes: number) => post("/cache/enforce", { maxBytes }),
 
   downloadTrack: (videoId: string) =>
     post<{ ok: boolean; status: string }>("/download", { videoId }),
