@@ -127,6 +127,12 @@ ipcMain.handle('maximize-window', () => {
 })
 ipcMain.handle('close-window', () => mainWindow?.close())
 
+ipcMain.handle('resize-widget', (event, width: number, height: number) => {
+  if (isMiniPlayer && mainWindow) {
+    mainWindow.setBounds({ width, height })
+  }
+})
+
 // --- Mini Player Mode ---
 let isMiniPlayer = false
 let normalBounds = { width: 1200, height: 780, x: 0, y: 0 }
@@ -141,7 +147,7 @@ ipcMain.handle('toggle-mini-player', () => {
     isMiniPlayer = false
   } else {
     normalBounds = mainWindow.getBounds()
-    mainWindow.setMinimumSize(300, 300)
+    mainWindow.setMinimumSize(250, 80)
     mainWindow.setBounds({ width: 300, height: 300 })
     mainWindow.setAlwaysOnTop(true, 'floating')
     isMiniPlayer = true

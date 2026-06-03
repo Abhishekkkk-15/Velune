@@ -9,6 +9,7 @@ const api = {
   closeWindow: () => ipcRenderer.invoke('close-window'),
 
   toggleMiniPlayer: () => ipcRenderer.invoke('toggle-mini-player'),
+  resizeWidget: (width: number, height: number) => ipcRenderer.invoke('resize-widget', width, height),
   setThumbarButtons: (isPlaying: boolean) => ipcRenderer.send('set-thumbar-buttons', { isPlaying }),
   onMediaCommand: (callback: (cmd: string) => void) => {
     ipcRenderer.on('media-command', (_event, cmd) => callback(cmd))

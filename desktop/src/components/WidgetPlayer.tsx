@@ -28,7 +28,7 @@ export default function WidgetPlayer() {
   useEffect(() => {
     if (window.electron?.resizeWidget) {
       if (miniPlayerTheme === 'floating') window.electron.resizeWidget(400, 80)
-      else if (miniPlayerTheme === 'vinyl') window.electron.resizeWidget(340, 120)
+      else if (miniPlayerTheme === 'vinyl') window.electron.resizeWidget(340, 110)
       else window.electron.resizeWidget(300, 300) // docked (square)
     }
   }, [miniPlayerTheme])
