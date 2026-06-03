@@ -39,7 +39,7 @@ export default function LyricsPanel({ track, progress }: Props) {
 
   // requestAnimationFrame smooth scroll
   useEffect(() => {
-    if (!listRef.current || !containerRef.current) return
+    if (!data || !listRef.current || !containerRef.current) return
 
     let animationFrameId: number
 
@@ -70,7 +70,7 @@ export default function LyricsPanel({ track, progress }: Props) {
 
     animationFrameId = requestAnimationFrame(updateScroll)
     return () => cancelAnimationFrame(animationFrameId)
-  }, [])
+  }, [data])
 
   if (isLoading) {
     return (
