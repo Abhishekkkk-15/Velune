@@ -349,6 +349,7 @@ export class InnerTube {
       } catch (e) {
         console.error('Failed to build local personalized home:', e)
       }
+      if (sections.length > 0) return { sections }
     }
 
     const body = buildBody(WEB_REMIX_CLIENT, { browseId: 'FEmusic_home' })
